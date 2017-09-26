@@ -49,11 +49,13 @@ int main(){
 
 		write(newfd, msg, sizeof(msg));
 
-    recvfrom(udpFd, buffer, sizeof(buffer), 0, (struct sockaddr*) &clientaddr, &addrlen);
+    	recvfrom(udpFd, buffer, sizeof(buffer), 0, (struct sockaddr*) &clientaddr, &addrlen);
 
 		printf("UDP: %s\n", buffer);
 
 		sendto(udpFd, msg, strlen(msg),0, (struct sockaddr*) &clientaddr, addrlen);
+
+		printf("loop hehe");
 
 	}
 

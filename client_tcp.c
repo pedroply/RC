@@ -26,7 +26,7 @@ int main(){
 		printf("erro: gethostname\n");
 		return 0;
 	}
-	hostptr = gethostbyname("tejo");
+	hostptr = gethostbyname("tejo.ist.utl.pt");
 
 
 	memset((void*) &addr, (int)'\0', sizeof(addr));

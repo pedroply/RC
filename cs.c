@@ -8,9 +8,10 @@
 #include <stdio.h>
 #define PORT 58022
 
-int tcpFd, udpFd, newfd;
+int tcpFd, udpFd, newfd, maxfd;
+fd_set rfds;
 struct hostent *hostptr;
-int addrlen;
+int addrlen, state = 0;
 char buffer[80];
 struct sockaddr_in serveraddr, clientaddr;
 
@@ -37,11 +38,35 @@ int main(){
 
 	listen(tcpFd, 5);
 
-	addrlen = sizeof(clientaddr);
-
-	newfd = accept(tcpFd, (struct sockaddr*) &clientaddr, &addrlen);
-
 	while(1){
+		FD_ZERO(&rfds);
+		FD_SET(tcpFd,&rfds);
+		maxfd = tcpFd;
+		FD_SET(udpFd,&rfds);
+		maxfd = max(maxfd,udpFd);
+		if(state){
+			FD_SET(newfd,&rfds);
+			maxfd = max(maxfd,newfd);
+		}
+
+		
+		counter = select(maxfd+1,&rfds,(fd_set*)NULL,(fd_set*)NULL,(struct timeval *)NULL);
+		if(counter<=0)
+			exit(1);
+
+
+		for(;counter; counter--){
+			if(FD_ISSET(tcpFd,&rfds)){
+				addrlen = sizeof(clientaddr);
+				newfd = accept(tcpFd, (struct sockaddr*) &clientaddr, &addrlen);
+				state = 1;
+
+			}
+			else if(FD_ISSET(udpFd,&rfds)){
+				
+			}
+		}
+
 
 		read(newfd, &buffer, sizeof(buffer));
 

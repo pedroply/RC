@@ -33,7 +33,7 @@ int main(){
 		printf("erro: gethostname\n");
 		return 0;
 	}
-	hostptr = gethostbyname("tejo.ist.utl.pt");
+	hostptr = gethostbyname("tejo");
 
 
 	memset((void*) &addr, (int)'\0', sizeof(addr));
@@ -47,7 +47,7 @@ int main(){
 	}
 
 	while(1){
-		printf("wainting for command");
+		printf(": ");
 		fgets(msg, 80, stdin);
 		if(!strcmp(msg, "list\n")){
 			if(write(fd, "LST\n", 5) == -1)
@@ -66,7 +66,7 @@ int main(){
 				for(j = 6 + i*4; j<strlen(buffer) && buffer[j]!=' '; j++)
 					cm[j-6-i*4] = buffer[j];
 				cm[3] = '\0';
-				if(!strcmp(cm, "WTC"))
+				if(!strcmp(cm, "WCT"))
 					strcpy(description, "word count");
 				else if(!strcmp(cm, "FLW"))
 					strcpy(description, "find longest word");
@@ -110,8 +110,9 @@ int main(){
 			sprintf(sizeFile, " %d ", charsInFile);
 
 			int charsize = strlen(sizeFile);
-			char* sendReq = (char*)malloc(8+charsize+charsInFile);
-			char* recvReq = (char*)malloc(8+charsize+charsInFile);
+			int reqSize = 8+charsize+charsInFile;
+			char* sendReq = (char*)malloc(reqSize);
+			char* recvReq = (char*)malloc(reqSize);
 			sendReq[0] = '\0';
 			recvReq[0] = '\0';
 			strcat(sendReq, "REQ ");
@@ -122,12 +123,12 @@ int main(){
 			while(fgets(inbuffer, 1024, (FILE*)inFile) != NULL)
 				strcat(sendReq, inbuffer);
 
-			printf("%s\n", sendReq);
-		  if(write(fd, sendReq, sizeof(sendReq)) == -1)
+			printf("%s |size: %d\n", sendReq, reqSize);
+		    if(write(fd, sendReq, reqSize) == -1)
 				printf("Error: write to socket\n");
 
-			if(read(fd, recvReq, sizeof(recvReq)) == -1)
-				printf("Error: read from socket\n");
+			while(read(fd, recvReq, reqSize)==0);
+				//printf("Error: read from socket\n");
 			printf("got : %s\nend\n", recvReq);
 
 			fclose(inFile);
@@ -136,7 +137,16 @@ int main(){
 			printf("\tUnkown Command: %s\n", msg);
 		}
 
+		close(fd);
+		fd = socket(AF_INET, SOCK_STREAM, 0);
+		if(fd == -1)
+			perror("Erro ao criar socket");
 
+		if(connect(fd, (struct sockaddr*) &addr, sizeof(addr)) == -1){
+			perror("ERROR");
+			printf("erro: connect");
+			return 0;
+		}
 		/*if (!fgets(msg, 80, stdin))
 		    printf("erro: command");
 

@@ -7,56 +7,129 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <ctype.h>
 
 int fd_udp, last_i;
 struct hostent *hostptr;
-int addrlen;
+int addrlen, ws_port = 59000, PORT = 58033;
 char buffer[80];
 char req[4] = "";
 char fileName[40] = "";
+char data[40] =""; //PLACEHOLDER
 
 
-struct sockaddr_in serveraddr, clientaddr;
+struct sockaddr_in serveraddr, wsaddr;
+struct in_addr *a;
+struct hostent *h;
+
+int doWordCount(char* fileName, char* data){
+	FILE *fp1;
+	char a;
+	int count = 0;
+	fp1 = fopen(fileName, "r");
+	while (a != EOF){
+		a = fgetc(fp1);
+		count++;
+	}
+	fclose(fp1);
+	return count;
+}
+
+char* findLongestWord(char* fileName, char* data){ //prob wrong af
+	FILE *fp1;
+	char* a = (char*) malloc(sizeof(data));
+	fp1 = fopen(fileName, "r");
+	char* longestWord;
+	while (fgets(a, sizeof(data), fp1)){
+		a[strlen(a)-1] = 0;
+		char* word;
+		int maxLenght = 0;
+		longestWord = (char*) calloc(40, sizeof(char));
+		word = strtok(a, " ");
+		while(word != NULL){
+			if (strlen(word) > maxLenght){
+				maxLenght = strlen(word);
+				strcpy(longestWord, word);
+			}
+			word = strtok(a, " ");
+		}
+	}
+	fclose(fp1);
+	return longestWord;
+}
+
+void convertUpper(char* fileName, char* data){
+	FILE *fp1;
+	char a;
+	fp1 = fopen(fileName, "r");
+	while (a != EOF){
+		a = fgetc(fp1);
+		a = toupper(a);
+	}
+	fclose(fp1);
+}
+
+void convertLower(char* fileName, char* data){
+	FILE *fp1;
+	char a;
+	fp1 = fopen(fileName, "r");
+	while (a != EOF){
+		a = fgetc(fp1);
+		a = tolower(a);
+	}
+	fclose(fp1);
+}
 
 int main(int argc, char** argv){
 	fd_udp = socket(AF_INET, SOCK_DGRAM, 0);
 	if(fd_udp == -1)
 		perror("Erro ao criar socket");
 	char msg[80] = "";
-	char hostName[128];
+	char hostName[128], name[128], ip_ws[20];
 	char ws_port_string[1];
-	int ws_port = 59000, PORT = 58033;
-	int argv_size = (argc - 1) * 3 + (argc - 1);
-	char* reg_msg = (char*)malloc(22 + argv_size);
+	int argv_size = (argc - 1) * 3 + (argc - 1); //alocacao de espaco mal, antes so considerava os PTCs, ta a alocar mais do que precisa
+	char* reg_msg = (char*)malloc(21 + argv_size);
+	char* unreg_msg = (char*)malloc(25);
+	strcat(reg_msg, "REG ");
 	int j;
 	for (j = 1; j < argc ; j++){
 		if (!strcmp(argv[j], "WCT") || (!strcmp(argv[j], "LOW")) || (!strcmp(argv[j], "UPP")) || (!strcmp(argv[j], "FLW"))){
 			strcat(reg_msg, argv[j]);
 			strcat(reg_msg, " ");
 		}
-		else{
-			if (argv[j] != NULL){
-				ws_port = atoi(argv[j]);
-				printf("%d\n", ws_port);
+		else if (!strcmp(argv[j], "-p")){
+				ws_port = atoi(argv[j+1]);
 			}
-			if (argv[j+1] != NULL){
+		else if (!strcmp(argv[j], "-n")){
 				strcpy(hostName, argv[j+1]);
-				printf("%s\n", hostName);
 			}
-			if (argv[j+2] != NULL){
-				PORT = atoi(argv[j+2]);
-				printf("%d\n", PORT);
+		else if (!strcmp(argv[j], "-e")){
+				PORT = atoi(argv[j+1]);
 			}
-			break;
-		}
 	}
-	strcat(reg_msg, "192.107.2.1 ");
+
+	gethostname(name, 128);
+	h = gethostbyname(name);
+	a=(struct in_addr*)h->h_addr_list[0];
+
+
+	strcat(reg_msg, inet_ntoa(*a));
+	strcat(reg_msg, " ");
 	sprintf(ws_port_string, "%d", ws_port);
 	strcat(reg_msg, ws_port_string);
-	printf("REQ: %s\n", reg_msg);
+	strcat(reg_msg, "\n");
+	printf("%s", reg_msg);
+
+	strcat(unreg_msg, "UNR ");
+	strcat(unreg_msg, inet_ntoa(*a));
+	strcat(unreg_msg, " ");
+	strcat(unreg_msg, ws_port_string);
+	strcat(unreg_msg, "\n");
+	printf("%s", unreg_msg);
 
 	if(gethostname(hostName, 128)==-1)
 		printf("erro: gethostname\n");
+
 	hostptr = gethostbyname(hostName);
 
 
@@ -67,10 +140,12 @@ int main(int argc, char** argv){
 
 	addrlen = sizeof(serveraddr);
 
-	//sendto(fd_udp)
+	if(sendto(fd_udp, reg_msg, strlen(reg_msg), 0, (struct sockaddr*) &serveraddr, sizeof(serveraddr)) == -1){
+		perror("Error sending register message");
+		return 1;
+	}
 
 	while(1){
-		//sendto(fd, msg, strlen(msg),0, (struct sockaddr*) &serveraddr, addrlen);
 		while(recvfrom(fd_udp, buffer, sizeof(buffer), 0, (struct sockaddr*) &serveraddr, &addrlen) == 0);
 		if(!memcmp(buffer, "WRQ ", 4)){
 			int i;
@@ -91,16 +166,33 @@ int main(int argc, char** argv){
 			}
 			req[3] = '\0';
 			if(!strcmp(req, "WCT")){
-				//doWordCount(fileName, data);
+				int wrd_count = 0;
+				char* rep_msg = (char*) malloc(sizeof(buffer));
+				wrd_count = doWordCount(fileName, data);
+				//process reply message with result
 			}
 			else if(!strcmp(req, "FLW")){
-				//findLongestWord(fileName, data);
+				char* longest_word;
+				char* rep_msg = (char*) malloc(sizeof(buffer));
+				longest_word = findLongestWord(fileName, data);
+				strcat(rep_msg, "REP R ");
+				//strcat(rep_msg, size);
+				strcat(rep_msg, data);
+				//process reply message with result
 			}
 			else if(!strcmp(req, "UPP")){
-				//convertUpper(fileName, data);
+				char* rep_msg = (char*) malloc(sizeof(buffer));
+				convertUpper(fileName, data);
+				strcat(rep_msg, "REP F ");
+				//strcat(rep_msg, size);
+				strcat(rep_msg, data);
 			}
 			else if(!strcmp(req, "LOW")){
-				//convertLower(fileName, data);
+				char* rep_msg = (char*) malloc(sizeof(buffer));
+				convertLower(fileName, data);
+				strcat(rep_msg, "REP F ");
+				//strcat(rep_msg, size);
+				strcat(rep_msg, data);
 			}
 			else{
 				//write ("WRP EOF");
@@ -114,7 +206,5 @@ int main(int argc, char** argv){
 	}
 
 	close(fd_udp);
-
-
 	return 0;
 }

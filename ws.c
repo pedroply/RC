@@ -9,7 +9,7 @@
 #include <stdlib.h>
 #include <ctype.h>
 
-int fd_udp, last_i;
+int fd_udp,fd_tcp, last_i;
 struct hostent *hostptr;
 int addrlen, ws_port = 59000, PORT = 58033;
 char buffer[80];
@@ -29,9 +29,13 @@ int doWordCount(char* fileName, char* data){
 	fp1 = fopen(fileName, "r");
 	while (a != EOF){
 		a = fgetc(fp1);
-		count++;
+		if (a == ' '){
+			count++;
+		}
 	}
+	count++;
 	fclose(fp1);
+	printf("%d\n", count);
 	return count;
 }
 
@@ -55,6 +59,7 @@ char* findLongestWord(char* fileName, char* data){ //prob wrong af
 		}
 	}
 	fclose(fp1);
+	printf("%s\n", longestWord);
 	return longestWord;
 }
 
@@ -65,8 +70,11 @@ void convertUpper(char* fileName, char* data){
 	while (a != EOF){
 		a = fgetc(fp1);
 		a = toupper(a);
+		printf("%c", a);
 	}
+	printf("\n");
 	fclose(fp1);
+
 }
 
 void convertLower(char* fileName, char* data){
@@ -76,14 +84,19 @@ void convertLower(char* fileName, char* data){
 	while (a != EOF){
 		a = fgetc(fp1);
 		a = tolower(a);
+		printf("%c", a);
 	}
+	printf("\n");
 	fclose(fp1);
 }
 
 int main(int argc, char** argv){
 	fd_udp = socket(AF_INET, SOCK_DGRAM, 0);
+	fd_tcp = socket(AF_INET, SOCK_STREAM, 0);
 	if(fd_udp == -1)
 		perror("Erro ao criar socket");
+	if(fd_tcp == -1)
+		perror("Erro ao criar socket TCP");
 	char msg[80] = "";
 	char hostName[128], name[128], ip_ws[20];
 	char ws_port_string[1];
@@ -136,7 +149,7 @@ int main(int argc, char** argv){
 	memset((void*) &serveraddr, (int)'\0', sizeof(serveraddr));
 	serveraddr.sin_family = AF_INET;
 	serveraddr.sin_addr.s_addr = ((struct in_addr*) (hostptr->h_addr_list[0]))->s_addr;
-	serveraddr.sin_port = htons((u_short)PORT);
+	serveraddr.sin_port = htons((u_short)58011);
 
 	addrlen = sizeof(serveraddr);
 
@@ -145,8 +158,13 @@ int main(int argc, char** argv){
 		return 1;
 	}
 
+	if(connect(fd_tcp, (struct sockaddr*) &serveraddr, sizeof(serveraddr)) == -1){
+		printf("erro: connect");
+		return 0;
+	}
+
 	while(1){
-		while(recvfrom(fd_udp, buffer, sizeof(buffer), 0, (struct sockaddr*) &serveraddr, &addrlen) == 0);
+		while(read(fd_tcp, buffer, sizeof(buffer)) == 0);
 		if(!memcmp(buffer, "WRQ ", 4)){
 			int i;
 			for(i = 4; i < strlen(buffer) && buffer[i] != '\n'; i++){
@@ -161,7 +179,7 @@ int main(int argc, char** argv){
 				else{
 					data[i - last_i] = buffer[i];
 				}
-				 Precisa saber qnt espaco reservar no buffer e no data qnd recebe mensagem*/
+				 Precisa saber qnt espaco reservar no buffer e no data qnd recebe mensagem */
 
 			}
 			req[3] = '\0';
@@ -201,8 +219,6 @@ int main(int argc, char** argv){
 		else{
 			// write ("WRP ERR");
 		}
-
-		printf("%s\n", buffer);
 	}
 
 	close(fd_udp);

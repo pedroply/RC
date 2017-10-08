@@ -8,7 +8,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <signal.h>
-#define PORT 58011
+#define PORT 58022
 
 int fd, newfd;
 struct hostent *hostptr;
@@ -33,7 +33,7 @@ int main(){
 		printf("erro: gethostname\n");
 		return 0;
 	}
-	hostptr = gethostbyname("tejo");
+	hostptr = gethostbyname(hostName);
 
 
 	memset((void*) &addr, (int)'\0', sizeof(addr));
@@ -52,7 +52,7 @@ int main(){
 		if(!strcmp(msg, "list\n")){
 			if(write(fd, "LST\n", 5) == -1)
 				printf("Error: write to socket");
-			read(fd, buffer, sizeof(buffer));
+			while(read(fd, buffer, sizeof(buffer)) == 0);
 			int i;
 			char numFTP[3] = " ";
 			for(i = 4; i<strlen(buffer) && buffer[i]!=' '; i++)

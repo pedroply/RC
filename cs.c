@@ -7,8 +7,9 @@
 #include <string.h>
 #include <stdio.h>
 #define PORT 58022
+#define max(A, B) ((A)>=(B)?(A):(B))
 
-int tcpFd, udpFd, newfd, maxfd;
+int tcpFd, udpFd, newfd, maxfd, counter;
 fd_set rfds;
 struct hostent *hostptr;
 int addrlen, state = 0;
@@ -44,31 +45,45 @@ int main(){
 		maxfd = tcpFd;
 		FD_SET(udpFd,&rfds);
 		maxfd = max(maxfd,udpFd);
-		if(state){
-			FD_SET(newfd,&rfds);
-			maxfd = max(maxfd,newfd);
-		}
 
-		
+
 		counter = select(maxfd+1,&rfds,(fd_set*)NULL,(fd_set*)NULL,(struct timeval *)NULL);
 		if(counter<=0)
-			exit(1);
+			perror("ERROR: select");
 
 
 		for(;counter; counter--){
 			if(FD_ISSET(tcpFd,&rfds)){
 				addrlen = sizeof(clientaddr);
 				newfd = accept(tcpFd, (struct sockaddr*) &clientaddr, &addrlen);
-				state = 1;
+				if(newfd == -1){
+					perror("ERROR: accept");
+				}
+				int pid = fork();
+				if(pid == 0){ //child
+					while(read(newfd, buffer, sizeof(buffer)) == 0);
+					//printf("%s, %d\n", buffer, (int)strlen(buffer));
+					if(strcmp(buffer, "LST\n") == 0){
+						write(newfd, "FPT 4 WCT FLW UPP LOW\n", sizeof("FPT 4 WCT FLW UPP LOW\n"));
+					}
+					close(newfd);
+					return 0;
+				}
+				else if(pid == -1){ //error
+					perror("ERROR: fork");
+				}
+				else{ //father
+					close(newfd);
+				}
 
 			}
 			else if(FD_ISSET(udpFd,&rfds)){
-				
+
 			}
 		}
 
 
-		read(newfd, &buffer, sizeof(buffer));
+		/*read(newfd, &buffer, sizeof(buffer));
 
 		printf("TCP: %s\n", buffer);
 
@@ -80,7 +95,7 @@ int main(){
 
 		sendto(udpFd, msg, strlen(msg),0, (struct sockaddr*) &clientaddr, addrlen);
 
-		printf("loop hehe");
+		printf("loop hehe");*/
 
 	}
 

@@ -215,13 +215,15 @@ int main(int argc, char** argv){
 			}
 			else if(!strcmp(req, "UPP")){
 				printf("In Convert Upper\n");
-				char* rep_msg = malloc(sizeof(char) * (size_int + strlen(size) + 8));
+				//char* rep_msg = malloc(sizeof(char) * (size_int + strlen(size) + 8));
 				char* data = convertUpper(fileInBuffer);
+				printf("%s\n", data);
 				/*strcat(rep_msg, "REP F ");
 				strcat(rep_msg, size);
 				strcat(rep_msg, " ");
-				strcat(rep_msg, data);*/
-				printf("%s\n", data);
+				strcat(rep_msg, data);
+				if(write(newfd, rep_msg, strlen(rep_msg)) == -1)
+					perror("ERROR: write to working server");*/
 			}
 			else if(!strcmp(req, "LOW")){
 				printf("In Convert Lower\n");

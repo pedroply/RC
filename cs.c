@@ -15,6 +15,7 @@ struct hostent *hostptr;
 int addrlen, state = 0;
 char buffer[80];
 struct sockaddr_in serveraddr, clientaddr;
+FILE *fileProcessingTasks;
 
 int main(){
 	tcpFd = socket(AF_INET, SOCK_STREAM, 0);
@@ -78,8 +79,50 @@ int main(){
 
 			}
 			else if(FD_ISSET(udpFd,&rfds)){
-				recvfrom(udpFd, buffer, sizeof(buffer), 0, (struct sockaddr*) &clientaddr, &addrlen);
-				printf("%s\n", buffer);
+				recvfrom(udpFd, buffer, sizeof(buffer), 0, (struct sockaddr*) &clientaddr, &addrlen);  //REG WCT UPP 127.0.1.1 59000
+				int i, j = -1;
+				char ip[15] = "";
+				char port[5] = "";
+
+				for(i = strlen(buffer); i>0; i--){
+					if(buffer[i] > 47 && buffer[i] < 58) //numero
+						if(buffer[i-1] == ' ') //espaco
+							if(buffer[i-2] > 64 && buffer[i-2] < 91){ //letra final de uma task
+								j = i;
+								break;
+							}
+				}
+				if(j == -1)
+					printf("mensagem do ws mal formulada");
+				for(j = 0; i<strlen(buffer) && buffer[i] != ' '; i++){
+					ip[j] = buffer[i];
+					j++;
+				}
+				ip[j] = '\0';
+				i++;
+				for(j = 0; i<strlen(buffer) && buffer[i] != ' '; i++){
+					port[j] = buffer[i];
+					j++;
+				}
+				port[j] = '\0';
+
+				//printf("ip: %s port: %s\n", ip, port);
+				fileProcessingTasks = (FILE*)fopen("fileprocessingtasks.txt", "a");
+				for(i = 0; i<80 && i<strlen(buffer); i++){
+					if(i<4 && buffer[i]!="REG "[i])
+						break;
+					if(i>3 && buffer[i]!=' ' && buffer[i] > 64 && buffer[i] < 91){
+						char task[4] = "";
+						for(j = i+3; i<j; i++){
+							task[i+3-j] = buffer[i];
+						}
+						task[3] = '\0';
+						//printf("%s %s %s\n", task, ip, port);
+						fprintf(fileProcessingTasks, "%s %s %s", task, ip, port);
+					}
+				}
+				//printf("%s\n", buffer);
+				fclose(fileProcessingTasks);
 			}
 		}
 

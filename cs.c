@@ -67,8 +67,10 @@ int main(){
 				}
 				int pid = fork();
 				if(pid == 0){ //child
-					while(read(newfd, buffer, sizeof(buffer)) == 0);
-					//printf("%s, %d\n", buffer, (int)strlen(buffer));
+					while(read(newfd, buffer, sizeof(buffer)-1) == 0);
+					buffer[79] = '\0';
+
+					printf("%s, %d\n", buffer, (int)strlen(buffer));
 					if(strcmp(buffer, "LST\n") == 0){
 						write(newfd, "FPT 4 WCT FLW UPP LOW\n", sizeof("FPT 4 WCT FLW UPP LOW\n"));
 					}
@@ -96,10 +98,20 @@ int main(){
 						}
 
 						while(charsRead<sizeInt){
-							charsRead += read(newfd, buffer, sizeof(buffer));
+							printf("heading to read\n");
+							int tempChars = read(newfd, buffer, sizeof(buffer)-1);
+							printf("read\n");
+							buffer[79] = '\0';
+							if(tempChars == -1)
+								perror("ERROR: reading rest of file");
+							else
+								charsRead += tempChars;
+							printf("Read Already: %d; Read Now: %d;\n", charsRead, tempChars);
 							strcat(fileInBuffer, buffer);
+							printf("heading to reloop\n");
 						}
 
+						printf("heading to file making\n");
 						/*for(i = 0; strlen(fileInBuffer); i++)
 							if(fileInBuffer[i] == '\n')
 								newLineCount++;*/
@@ -114,17 +126,21 @@ int main(){
 								serversSuported++;
 							}
 						}
+						rewind(fileProcessingTasks);
 						printf("Suported Servers: %d\n", serversSuported);
 
-						int tempSize = size/serversSuported;
+						int tempSize = sizeInt/serversSuported;
 						int start = 0;
 
 						while(fscanf(fileProcessingTasks, "%s %s %s", taskTemp, ipTemp, portTemp) > 0){
 							//printf("%s\n", taskTemp);
 
 							if(!strcmp(taskTemp, task)){ //dividir e mandar
-								while(fileProcessingTasks[tempSize] != '\n')
-									tempSize++;
+								if(tempSize + start < sizeInt)
+									while(fileInBuffer[tempSize+start] != '\n')
+										tempSize++;
+								else
+									tempSize = sizeInt - start;
 
 								hostptr = gethostbyname(ipTemp);
 
@@ -137,14 +153,24 @@ int main(){
 									perror("ERROR: connecting working server tcp");
 									return 0;
 								}
-								if(write(wFd, fileInBuffer, tempSize) == -1) // falta enviar head do comando 
+								char commandHead[80] = "";
+								sprintf(commandHead, "WRQ %s %s %d ", task, "filename.txt", tempSize);
+								printf("sending: %s\n", commandHead);
+								if(write(wFd, commandHead, strlen(commandHead)) == -1) // falta enviar head do comando
 									perror("ERROR: write to working server");
-									close(wFd);
+
+								printf("sendind: ");
+								write(1, fileInBuffer+start, tempSize);
+								printf("\n");
+
+								if(write(wFd, fileInBuffer+start, tempSize) == -1) // falta enviar head do comando
+									perror("ERROR: write to working server");
+								close(wFd);
 								wFd = socket(AF_INET, SOCK_STREAM, 0);
 								if(wFd == -1)
 									perror("Erro ao criar socket Tcp Working Servers");
 								start = tempSize+1;
-								tempSize += size/serversSuported;
+								tempSize = sizeInt/serversSuported;
 							}
 						}
 

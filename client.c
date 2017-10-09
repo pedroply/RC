@@ -85,7 +85,7 @@ int main(){
 		}
 		else if(!memcmp(msg, "request ", 8)){
 
-			int i, charsInFile = 0;
+			int i, charsInFile = 1;
 			FILE *inFile;
 			char inbuffer[1024] = "", nextChar;
 			for(i = 0; i<strlen(msg) && msg[i]!='\n'; i++){

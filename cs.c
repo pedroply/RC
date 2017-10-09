@@ -6,6 +6,7 @@
 #include <arpa/inet.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
 #define PORT 58022
 #define max(A, B) ((A)>=(B)?(A):(B))
 
@@ -72,9 +73,12 @@ int main(){
 						write(newfd, "FPT 4 WCT FLW UPP LOW\n", sizeof("FPT 4 WCT FLW UPP LOW\n"));
 					}
 					else if(strncmp(buffer, "REQ ", 4) == 0){ //REQ PTC size data
-						/*char task[4] = "";
+						char task[4] = "";
 						char size[16] = "";
-						int i;
+						char taskTemp[4];
+						char ipTemp[15];
+						char portTemp[6];
+						int i, j, charsRead = 0, sizeInt, serversSuported = 0;
 						for(i = 4; i<7; i++){
 							task[i-4] = buffer[i];
 						}
@@ -83,11 +87,40 @@ int main(){
 							size[i-8] = buffer[i];
 						}
 						size[i] = '\0';
+						sizeInt = atoi(size);
+						char *fileInBuffer = malloc(sizeof(char)*sizeInt+1);
 
-						printf("task:%s size:%s\n", task, size);*/
+						for(j = ++i; i<strlen(buffer); i++){
+							fileInBuffer[i-j] = buffer[i];
+							charsRead++;
+						}
+
+						while(charsRead<sizeInt){
+							charsRead += read(newfd, buffer, sizeof(buffer));
+							strcat(fileInBuffer, buffer);
+						}
+
+						printf("task:%s size:%s\n input: %s\n", task, size, fileInBuffer);
+
+						fileProcessingTasks = (FILE*)fopen("fileprocessingtasks.txt", "r");
+						while(fscanf(fileProcessingTasks, "%s %s %s", taskTemp, ipTemp, portTemp) > 0){
+							//printf("%s\n", taskTemp);
+							if(!strcmp(taskTemp, task)){
+								serversSuported++;
+							}
+						}
+						printf("Suported Servers: %d\n", serversSuported);
+						while(fscanf(fileProcessingTasks, "%s %s %s", taskTemp, ipTemp, portTemp) > 0){
+							//printf("%s\n", taskTemp);
+							if(!strcmp(taskTemp, task)){ //dividir e mandar
+								
+							}
+						}
 
 
-						if(gethostname(hostName, 128)==-1){
+
+
+						/*if(gethostname(hostName, 128)==-1){
 							printf("erro: gethostname\n");
 							return 0;
 						}
@@ -110,7 +143,7 @@ int main(){
 						close(wFd);
 						wFd = socket(AF_INET, SOCK_STREAM, 0);
 						if(wFd == -1)
-							perror("Erro ao criar socket Tcp Working Servers");
+							perror("Erro ao criar socket Tcp Working Servers");*/
 
 
 					}
@@ -131,7 +164,7 @@ int main(){
 				recvfrom(udpFd, buffer, sizeof(buffer), 0, (struct sockaddr*) &clientaddr, &addrlen);  //REG WCT UPP 127.0.1.1 59000
 				int i, j = -1;
 				char ip[15] = "";
-				char port[5] = "";
+				char port[6] = "";
 
 				for(i = strlen(buffer); i>0; i--){
 					if(buffer[i] > 47 && buffer[i] < 58) //numero

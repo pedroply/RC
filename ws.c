@@ -193,12 +193,6 @@ int main(int argc, char** argv){
 				else if ( 8 <= i <= 19){
 					fileName[i - 8] = buffer[i];
 				}
-				else if (i => 21  && buffer[i] != '\0')
-					size[i-21] = buffer[i];
-					last_i = i;
-				else{
-					data[i - last_i] = buffer[i];
-				}
 			}
 			req[3] = '\0';
 			if(!strcmp(req, "WCT")){

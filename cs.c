@@ -73,10 +73,18 @@ int main(){
 					}
 					else if(strncmp(buffer, "REQ ", 4) == 0){ //REQ PTC size data
 						/*char task[4] = "";
+						char size[16] = "";
+						int i;
 						for(i = 4; i<7; i++){
 							task[i-4] = buffer[i];
 						}
-						printf("%s\n", task);*/
+						task[3] = '\0';
+						for(i++; buffer[i] != ' '; i++){
+							size[i-8] = buffer[i];
+						}
+						size[i] = '\0';
+
+						printf("task:%s size:%s\n", task, size);*/
 
 
 						if(gethostname(hostName, 128)==-1){
@@ -96,7 +104,6 @@ int main(){
 							return 0;
 						}
 
-						printf("mandou\n");
 						if(write(wFd, "WRQ UPP 12345678.txt 102462524 ola o mario e super gay ehehehe", sizeof("WRQ UPP 12345678.txt 102462524 ola o mario e super gay ehehehe")) == -1)
 							perror("ERROR: write to working server");
 

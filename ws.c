@@ -170,8 +170,13 @@ int main(int argc, char** argv){
 
 	listen(fd_tcp, 5);
 
-	while(1){		printf("wainting\n");
-		while(read(fd_tcp, buffer, sizeof(buffer)) == 0);
+	while(1){
+		addrlen = sizeof(clientaddr);
+		newfd = accept(fd_tcp, (struct sockaddr*) &clientaddr, &addrlen);
+		if (newfd == -1){
+			perror("Error accept");
+		}
+		while(read(newfd, buffer, sizeof(buffer)) == 0);
 		printf("received: %s\n", buffer);
 
 		for(i = 0; i < sizeof(buffer); i++){

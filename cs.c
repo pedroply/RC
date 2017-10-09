@@ -78,7 +78,8 @@ int main(){
 
 			}
 			else if(FD_ISSET(udpFd,&rfds)){
-
+				recvfrom(udpFd, buffer, sizeof(buffer), 0, (struct sockaddr*) &clientaddr, &addrlen);
+				printf("%s\n", buffer);
 			}
 		}
 

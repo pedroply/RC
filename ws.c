@@ -11,7 +11,7 @@
 
 int fd_udp,fd_tcp, last_i;
 struct hostent *hostptr;
-int addrlen, ws_port = 59000, PORT = 58033;
+int addrlen, ws_port = 59000, PORT = 58022;
 char buffer[80];
 char req[4] = "";
 char fileName[40] = "";
@@ -149,7 +149,7 @@ int main(int argc, char** argv){
 	memset((void*) &serveraddr, (int)'\0', sizeof(serveraddr));
 	serveraddr.sin_family = AF_INET;
 	serveraddr.sin_addr.s_addr = ((struct in_addr*) (hostptr->h_addr_list[0]))->s_addr;
-	serveraddr.sin_port = htons((u_short)58011);
+	serveraddr.sin_port = htons((u_short)PORT);
 
 	addrlen = sizeof(serveraddr);
 
@@ -158,10 +158,10 @@ int main(int argc, char** argv){
 		return 1;
 	}
 
-	if(connect(fd_tcp, (struct sockaddr*) &serveraddr, sizeof(serveraddr)) == -1){
+	/*if(connect(fd_tcp, (struct sockaddr*) &serveraddr, sizeof(serveraddr)) == -1){
 		printf("erro: connect");
 		return 0;
-	}
+	}*/
 
 	while(1){
 		while(read(fd_tcp, buffer, sizeof(buffer)) == 0);

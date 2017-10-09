@@ -103,8 +103,10 @@ int main(int argc, char** argv){
 	int argv_size = (argc - 1) * 3 + (argc - 1); //alocacao de espaco mal, antes so considerava os PTCs, ta a alocar mais do que precisa
 	char* reg_msg = (char*)malloc(21 + argv_size);
 	char* unreg_msg = (char*)malloc(25);
+	char size[10];
+	int size_int;
 	strcat(reg_msg, "REG ");
-	int j;
+	int j, i;
 	for (j = 1; j < argc ; j++){
 		if (!strcmp(argv[j], "WCT") || (!strcmp(argv[j], "LOW")) || (!strcmp(argv[j], "UPP")) || (!strcmp(argv[j], "FLW"))){
 			strcat(reg_msg, argv[j]);
@@ -158,15 +160,23 @@ int main(int argc, char** argv){
 		return 1;
 	}
 
-	/*if(connect(fd_tcp, (struct sockaddr*) &serveraddr, sizeof(serveraddr)) == -1){
-		printf("erro: connect");
+	if(connect(fd_tcp, (struct sockaddr*) &serveraddr, sizeof(serveraddr)) == -1){
+		perror("erro: connect");
 		return 0;
-	}*/
+	}
 
 	while(1){
 		while(read(fd_tcp, buffer, sizeof(buffer)) == 0);
+		for(i = 0; i < sizeof(buffer); i++){
+			if (!memcmp(buffer+i, ".txt ", 5)){
+				for (j = i+1; buffer+j != " "; j++){
+					size[j-i-1] = buffer [j];
+				}
+				break;
+			}
+		}
+		size_int = atoi(size);
 		if(!memcmp(buffer, "WRQ ", 4)){
-			int i;
 			for(i = 4; i < strlen(buffer) && buffer[i] != '\n'; i++){
 				if (4 <= i <= 6)
 					req[i-4] = buffer[i];
@@ -178,9 +188,7 @@ int main(int argc, char** argv){
 					last_i = i;
 				else{
 					data[i - last_i] = buffer[i];
-				}
-				 Precisa saber qnt espaco reservar no buffer e no data qnd recebe mensagem */
-
+				}*/
 			}
 			req[3] = '\0';
 			if(!strcmp(req, "WCT")){

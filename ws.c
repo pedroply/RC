@@ -18,7 +18,7 @@ char fileName[40] = "";
 char data[40] =""; //PLACEHOLDER
 
 
-struct sockaddr_in serveraddr, wsaddr;
+struct sockaddr_in serveraddr, serveraddr_tcp;
 struct in_addr *a;
 struct hostent *h;
 
@@ -160,16 +160,21 @@ int main(int argc, char** argv){
 		return 1;
 	}
 
-	if(connect(fd_tcp, (struct sockaddr*) &serveraddr, sizeof(serveraddr)) == -1){
-		perror("erro: connect");
-		return 0;
-	}
+	memset((void*) &serveraddr_tcp, (int)'\0', sizeof(serveraddr_tcp));
+	serveraddr_tcp.sin_family = AF_INET;
+	serveraddr_tcp.sin_addr.s_addr = htonl(INADDR_ANY);
+	serveraddr_tcp.sin_port = htons((u_short)ws_port);
+
+	if(bind(fd_tcp, (struct sockaddr*) &serveraddr_tcp, sizeof(serveraddr_tcp)) == -1)
+		perror("Error binding socket Tcp");
+
+	listen(fd_tcp, 5);
 
 	while(1){
 		while(read(fd_tcp, buffer, sizeof(buffer)) == 0);
 		for(i = 0; i < sizeof(buffer); i++){
 			if (!memcmp(buffer+i, ".txt ", 5)){
-				for (j = i+1; buffer+j != " "; j++){
+				for (j = i+1; buffer[j] != ' '; j++){
 					size[j-i-1] = buffer [j];
 				}
 				break;

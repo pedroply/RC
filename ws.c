@@ -9,7 +9,7 @@
 #include <stdlib.h>
 #include <ctype.h>
 
-int fd_udp,fd_tcp, last_i;
+int fd_udp,fd_tcp, newfd, last_i;
 struct hostent *hostptr;
 int addrlen, ws_port = 59000, PORT = 58022;
 char buffer[80];
@@ -18,7 +18,7 @@ char fileName[40] = "";
 char data[40] =""; //PLACEHOLDER
 
 
-struct sockaddr_in serveraddr, serveraddr_tcp;
+struct sockaddr_in serveraddr, serveraddr_tcp, clientaddr;
 struct in_addr *a;
 struct hostent *h;
 
@@ -171,7 +171,13 @@ int main(int argc, char** argv){
 	listen(fd_tcp, 5);
 
 	while(1){
-		while(read(fd_tcp, buffer, sizeof(buffer)) == 0);
+		addrlen = sizeof(clientaddr);
+		newfd = accept(fd_tcp, (struct sockaddr*) &clientaddr, &addrlen);
+		if(newfd == -1){
+			perror("ERROR: accept");
+		}
+		while(read(newfd, buffer, sizeof(buffer)) == 0);
+		printf("%s\n", buffer);
 		for(i = 0; i < sizeof(buffer); i++){
 			if (!memcmp(buffer+i, ".txt ", 5)){
 				for (j = i+1; buffer[j] != ' '; j++){
@@ -233,7 +239,8 @@ int main(int argc, char** argv){
 			// write ("WRP ERR");
 		}
 	}
-
+	close(fd_tcp);
+	close(newfd);
 	close(fd_udp);
 	return 0;
 }

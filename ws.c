@@ -171,15 +171,19 @@ int main(int argc, char** argv){
 	listen(fd_tcp, 5);
 
 	while(1){
+		printf("wainting\n");
 		while(read(fd_tcp, buffer, sizeof(buffer)) == 0);
+		printf("received: %s\n", buffer);
 		for(i = 0; i < sizeof(buffer); i++){
 			if (!memcmp(buffer+i, ".txt ", 5)){
 				for (j = i+1; buffer[j] != ' '; j++){
 					size[j-i-1] = buffer [j];
+					printf("%s\n", size);
 				}
 				break;
 			}
 		}
+
 		size_int = atoi(size);
 		if(!memcmp(buffer, "WRQ ", 4)){
 			for(i = 4; i < strlen(buffer) && buffer[i] != '\n'; i++){

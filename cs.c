@@ -89,7 +89,7 @@ int main(){
 						memset((void*) &addr, (int)'\0', sizeof(addr));
 						addr.sin_family = AF_INET;
 						addr.sin_addr.s_addr = ((struct in_addr*) (hostptr->h_addr_list[0]))->s_addr;
-						addr.sin_port = htons((u_short)PORT);
+						addr.sin_port = htons((u_short)59000);
 
 						if(connect(wFd, (struct sockaddr*) &addr, sizeof(addr)) == -1){
 							perror("ERROR: connecting working server tcp");
@@ -97,7 +97,8 @@ int main(){
 						}
 
 						printf("mandou\n");
-						write(wFd, "WRQ UPP 12345678.txt 102462524 ola o mario e super gay ehehehe", sizeof("WRQ UPP 12345678.txt 102462524 ola o mario e super gay ehehehe"));
+						if(write(wFd, "WRQ UPP 12345678.txt 102462524 ola o mario e super gay ehehehe", sizeof("WRQ UPP 12345678.txt 102462524 ola o mario e super gay ehehehe")) == -1)
+							perror("ERROR: write to working server");
 
 						close(wFd);
 						wFd = socket(AF_INET, SOCK_STREAM, 0);

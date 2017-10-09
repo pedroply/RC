@@ -9,21 +9,25 @@
 #define PORT 58022
 #define max(A, B) ((A)>=(B)?(A):(B))
 
-int tcpFd, udpFd, newfd, maxfd, counter;
+int tcpFd, udpFd, newfd, maxfd, counter, wFd;
 fd_set rfds;
 struct hostent *hostptr;
 int addrlen, state = 0;
 char buffer[80];
-struct sockaddr_in serveraddr, clientaddr;
+struct sockaddr_in serveraddr, clientaddr, addr;
+char hostName[128];
 FILE *fileProcessingTasks;
 
 int main(){
 	tcpFd = socket(AF_INET, SOCK_STREAM, 0);
+	wFd = socket(AF_INET, SOCK_STREAM, 0);
   udpFd = socket(AF_INET, SOCK_DGRAM, 0);
 	if(tcpFd == -1)
 		perror("Erro ao criar socket Tcp");
   if(udpFd == -1)
 		perror("Erro ao criar socket Udp");
+	if(wFd == -1)
+		perror("Erro ao criar socket Tcp Working Servers");
 
 	char msg[80] = "hi from server";
 
@@ -67,6 +71,43 @@ int main(){
 					if(strcmp(buffer, "LST\n") == 0){
 						write(newfd, "FPT 4 WCT FLW UPP LOW\n", sizeof("FPT 4 WCT FLW UPP LOW\n"));
 					}
+					else if(strncmp(buffer, "REQ ", 4) == 0){ //REQ PTC size data
+						/*char task[4] = "";
+						for(i = 4; i<7; i++){
+							task[i-4] = buffer[i];
+						}
+						printf("%s\n", task);*/
+
+
+						if(gethostname(hostName, 128)==-1){
+							printf("erro: gethostname\n");
+							return 0;
+						}
+						hostptr = gethostbyname(hostName);
+
+
+						memset((void*) &addr, (int)'\0', sizeof(addr));
+						addr.sin_family = AF_INET;
+						addr.sin_addr.s_addr = ((struct in_addr*) (hostptr->h_addr_list[0]))->s_addr;
+						addr.sin_port = htons((u_short)PORT);
+
+						if(connect(wFd, (struct sockaddr*) &addr, sizeof(addr)) == -1){
+							perror("ERROR: connecting working server tcp");
+							return 0;
+						}
+
+						printf("mandou\n");
+						write(wFd, "WRQ UPP 12345678.txt 102462524 ola o mario e super gay ehehehe", sizeof("WRQ UPP 12345678.txt 102462524 ola o mario e super gay ehehehe"));
+
+						close(wFd);
+						wFd = socket(AF_INET, SOCK_STREAM, 0);
+						if(wFd == -1)
+							perror("Erro ao criar socket Tcp Working Servers");
+
+
+					}
+					else
+						write(newfd, "REQ ERR\n", sizeof("REQ ERR\n"));
 					close(newfd);
 					return 0;
 				}

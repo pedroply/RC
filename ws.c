@@ -183,14 +183,14 @@ int main(int argc, char** argv){
 					size[j] = buffer [i];
 					j++;
 		}
-
+		size[j] = '\0';
 		size_int = atoi(size);
 		printf("%d\n", size_int);
-		if(!memcmp(buffer, "WRQ ", 4)){
+		/*if(!memcmp(buffer, "WRQ ", 4)){
 			for(i = 4; i < strlen(buffer) && buffer[i] != '\n'; i++){
 				if (4 <= i <= 6)
 					req[i-4] = buffer[i];
-				/*else if ( 8 <= i <= 19){
+				else if ( 8 <= i <= 19){
 					fileName[i - 8] = buffer[i];
 				}
 				else if (i => 21  && buffer[i] != '\0')
@@ -198,7 +198,7 @@ int main(int argc, char** argv){
 					last_i = i;
 				else{
 					data[i - last_i] = buffer[i];
-				}*/
+				}
 			}
 			req[3] = '\0';
 			if(!strcmp(req, "WCT")){
@@ -236,7 +236,7 @@ int main(int argc, char** argv){
 		}
 		else{
 			// write ("WRP ERR");
-		}
+		}*/
 	}
 	close(fd_tcp);
 	close(newfd);

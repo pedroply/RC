@@ -78,7 +78,7 @@ int main(){
 						char taskTemp[4];
 						char ipTemp[15];
 						char portTemp[6];
-						int i, j, charsRead = 0, sizeInt, serversSuported = 0;
+						int i, j, charsRead = 0, sizeInt, serversSuported = 0, newLineCount = 0;
 						for(i = 4; i<7; i++){
 							task[i-4] = buffer[i];
 						}
@@ -100,6 +100,11 @@ int main(){
 							strcat(fileInBuffer, buffer);
 						}
 
+						/*for(i = 0; strlen(fileInBuffer); i++)
+							if(fileInBuffer[i] == '\n')
+								newLineCount++;*/
+
+
 						printf("task:%s size:%s\n input: %s\n", task, size, fileInBuffer);
 
 						fileProcessingTasks = (FILE*)fopen("fileprocessingtasks.txt", "r");
@@ -110,10 +115,36 @@ int main(){
 							}
 						}
 						printf("Suported Servers: %d\n", serversSuported);
+
+						int tempSize = size/serversSuported;
+						int start = 0;
+
 						while(fscanf(fileProcessingTasks, "%s %s %s", taskTemp, ipTemp, portTemp) > 0){
 							//printf("%s\n", taskTemp);
+
 							if(!strcmp(taskTemp, task)){ //dividir e mandar
-								
+								while(fileProcessingTasks[tempSize] != '\n')
+									tempSize++;
+
+								hostptr = gethostbyname(ipTemp);
+
+								memset((void*) &addr, (int)'\0', sizeof(addr));
+								addr.sin_family = AF_INET;
+								addr.sin_addr.s_addr = ((struct in_addr*) (hostptr->h_addr_list[0]))->s_addr;
+								addr.sin_port = htons((u_short)atoi(portTemp));
+
+								if(connect(wFd, (struct sockaddr*) &addr, sizeof(addr)) == -1){
+									perror("ERROR: connecting working server tcp");
+									return 0;
+								}
+								if(write(wFd, fileInBuffer, tempSize) == -1) // falta enviar head do comando 
+									perror("ERROR: write to working server");
+									close(wFd);
+								wFd = socket(AF_INET, SOCK_STREAM, 0);
+								if(wFd == -1)
+									perror("Erro ao criar socket Tcp Working Servers");
+								start = tempSize+1;
+								tempSize += size/serversSuported;
 							}
 						}
 

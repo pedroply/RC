@@ -103,7 +103,7 @@ int main(int argc, char** argv){
 	int argv_size = (argc - 1) * 3 + (argc - 1); //alocacao de espaco mal, antes so considerava os PTCs, ta a alocar mais do que precisa
 	char* reg_msg = (char*)malloc(21 + argv_size);
 	char* unreg_msg = (char*)malloc(25);
-	char size[10];
+	char size[16];
 	int size_int;
 	strcat(reg_msg, "REG ");
 	int j, i;
@@ -177,19 +177,15 @@ int main(int argc, char** argv){
 			perror("Error accept");
 		}
 		while(read(newfd, buffer, sizeof(buffer)) == 0);
-		printf("received: %s\n", buffer);
-
-		for(i = 0; i < sizeof(buffer); i++){
-			if (!memcmp(buffer+i, ".txt ", 5)){
-				for (j = i+1; buffer[j] != ' '; j++){
-					size[j-i-1] = buffer [j];
-					printf("%s\n", size);
-				}
-				break;
-			}
+		printf("%s\n", buffer);
+		int j = 0;
+		for(i = 21; buffer[i] != ' '; i++){
+					size[j] = buffer [i];
+					j++;
 		}
 
 		size_int = atoi(size);
+		printf("%d\n", size_int);
 		if(!memcmp(buffer, "WRQ ", 4)){
 			for(i = 4; i < strlen(buffer) && buffer[i] != '\n'; i++){
 				if (4 <= i <= 6)

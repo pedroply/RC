@@ -12,7 +12,7 @@
 int fd_udp,fd_tcp, newfd, last_i;
 struct hostent *hostptr;
 int addrlen, ws_port = 59000, PORT = 58022;
-char buffer[80];
+char buffer[40], buffer_test[80];
 char req[4] = "";
 char fileName[40] = "";
 char data[40] =""; //PLACEHOLDER
@@ -178,6 +178,8 @@ int main(int argc, char** argv){
 		}
 		while(read(newfd, buffer, sizeof(buffer)) == 0);
 		printf("%s\n", buffer);
+		while(read(newfd, buffer_test, sizeof(buffer_test)) == 0);
+		printf("%s\n", buffer_test);
 		int j = 0;
 		for(i = 21; buffer[i] != ' '; i++){
 					size[j] = buffer [i];
@@ -186,7 +188,7 @@ int main(int argc, char** argv){
 		size[j] = '\0';
 		size_int = atoi(size);
 		printf("%d\n", size_int);
-		/*if(!memcmp(buffer, "WRQ ", 4)){
+		/*if(!strncmp(buffer, "WRQ ", 4)){
 			for(i = 4; i < strlen(buffer) && buffer[i] != '\n'; i++){
 				if (4 <= i <= 6)
 					req[i-4] = buffer[i];

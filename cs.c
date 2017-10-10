@@ -10,7 +10,7 @@
 #define PORT 58022
 #define max(A, B) ((A)>=(B)?(A):(B))
 
-int tcpFd, udpFd, newfd, maxfd, counter, wFd;
+int tcpFd, udpFd, newfd, maxfd, counter, wFd, fileCount = 0;
 fd_set rfds;
 struct hostent *hostptr;
 int addrlen, state = 0;
@@ -29,6 +29,11 @@ int main(){
 		perror("Erro ao criar socket Udp");
 	if(wFd == -1)
 		perror("Erro ao criar socket Tcp Working Servers");
+
+	fileProcessingTasks = (FILE*)fopen("fileprocessingtasks.txt", "w+");
+	fclose(fileProcessingTasks);
+
+	mkdir("/input_files", 0700); //n esta a criar diretorio
 
 	char msg[80] = "hi from server";
 
@@ -88,7 +93,7 @@ int main(){
 						for(i++; buffer[i] != ' '; i++){
 							size[i-8] = buffer[i];
 						}
-						size[i] = '\0';
+						size[i-8] = '\0';
 						sizeInt = atoi(size);
 						char *fileInBuffer = malloc(sizeof(char)*sizeInt+1);
 
@@ -98,26 +103,29 @@ int main(){
 						}
 
 						while(charsRead<sizeInt){
-							printf("heading to read\n");
 							int tempChars = read(newfd, buffer, sizeof(buffer)-1);
-							printf("read\n");
 							buffer[79] = '\0';
 							if(tempChars == -1)
 								perror("ERROR: reading rest of file");
 							else
 								charsRead += tempChars;
-							printf("Read Already: %d; Read Now: %d;\n", charsRead, tempChars);
+							//printf("Read Already: %d; Read Now: %d;\n", charsRead, tempChars);
 							strcat(fileInBuffer, buffer);
-							printf("heading to reloop\n");
 						}
-
-						printf("heading to file making\n");
 						/*for(i = 0; strlen(fileInBuffer); i++)
 							if(fileInBuffer[i] == '\n')
 								newLineCount++;*/
 
+						fileCount++;
 
-						printf("task:%s size:%s\n input: %s\n", task, size, fileInBuffer);
+						FILE *fp;
+						char directory[80];
+						sprintf(directory, "/input_files/%05d.txt", fileCount);
+						fp = fopen(directory, "w+");
+						fputs(fileInBuffer, fp);
+						fclose(fp);
+
+						//printf("task:%s size:%s\n input: %s\n", task, size, fileInBuffer);
 
 						fileProcessingTasks = (FILE*)fopen("fileprocessingtasks.txt", "r");
 						while(fscanf(fileProcessingTasks, "%s %s %s", taskTemp, ipTemp, portTemp) > 0){
@@ -154,16 +162,16 @@ int main(){
 									return 0;
 								}
 								char commandHead[80] = "";
-								sprintf(commandHead, "WRQ %s %s %d ", task, "filename.txt", tempSize);
+								sprintf(commandHead, "WRQ %s %s %d ", task, "filename.txt", tempSize);  //WRQ PTC filename size data
 								printf("sending: %s\n", commandHead);
-								if(write(wFd, commandHead, strlen(commandHead)) == -1) // falta enviar head do comando
+								if(write(wFd, commandHead, strlen(commandHead)) == -1) // enviar head do comando
 									perror("ERROR: write to working server");
 
 								printf("sendind: ");
 								write(1, fileInBuffer+start, tempSize);
 								printf("\n");
 
-								if(write(wFd, fileInBuffer+start, tempSize) == -1) // falta enviar head do comando
+								if(write(wFd, fileInBuffer+start, tempSize) == -1) // enviar file
 									perror("ERROR: write to working server");
 								close(wFd);
 								wFd = socket(AF_INET, SOCK_STREAM, 0);
@@ -173,8 +181,6 @@ int main(){
 								tempSize = sizeInt/serversSuported;
 							}
 						}
-
-
 
 
 						/*if(gethostname(hostName, 128)==-1){
@@ -204,6 +210,41 @@ int main(){
 
 
 					}
+					else if(strncmp(buffer, "REP F ", 6) == 0){ //REP F size data
+						char size[16] = "";
+						int sizeInt, i, j, charsRead = 0;
+
+						for(i = 6; buffer[i] != ' '; i++){
+							size[i-6] = buffer[i];
+						}
+						size[i-6] = '\0';
+						sizeInt = atoi(size);
+
+						char *fileInBuffer = malloc(sizeof(char)*sizeInt+1);
+						fileInBuffer[0] = '\0';
+
+						for(j = ++i; i < strlen(buffer) && charsRead < sizeInt; i++){
+							fileInBuffer[i-j] = buffer[i];
+							charsRead++;
+						}
+
+						while(charsRead<sizeInt){
+							int tempChars = read(newfd, buffer, sizeof(buffer)-1);
+							buffer[79] = '\0';
+							if(tempChars == -1)
+								perror("ERROR: reading rest of file");
+							else
+								charsRead += tempChars;
+							//printf("Read Already: %d; Read Now: %d;\n", charsRead, tempChars);
+							strcat(fileInBuffer, buffer);
+						}
+
+
+
+					}
+					else if(strncmp(buffer, "REP R ", 6) == 0){ //REP R size data
+
+					}
 					else
 						write(newfd, "REQ ERR\n", sizeof("REQ ERR\n"));
 					close(newfd);
@@ -221,7 +262,7 @@ int main(){
 				recvfrom(udpFd, buffer, sizeof(buffer), 0, (struct sockaddr*) &clientaddr, &addrlen);  //REG WCT UPP 127.0.1.1 59000
 				int i, j = -1;
 				char ip[15] = "";
-				char port[6] = "";
+				char port[7] = "";
 
 				for(i = strlen(buffer); i>0; i--){
 					if(buffer[i] > 47 && buffer[i] < 58) //numero
@@ -231,6 +272,7 @@ int main(){
 								break;
 							}
 				}
+				//printf("caractere actual: %c size buffer: %d i: %d\n", buffer[i], strlen(buffer), i);
 				if(j == -1)
 					printf("mensagem do ws mal formulada");
 				for(j = 0; i<strlen(buffer) && buffer[i] != ' '; i++){

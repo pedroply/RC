@@ -10,29 +10,40 @@
 #include <signal.h>
 #define PORT 58022
 
-int fd, newfd;
+int fd, newfd, CSport = PORT;
 struct hostent *hostptr;
 int clientlen;
 char buffer[80];
 struct sockaddr_in addr, clientaddr;
+char hostName[128] = "";
 
-int main(){
+int main(int argc, char** argv){
 	fd = socket(AF_INET, SOCK_STREAM, 0);
 	if(fd == -1)
 		perror("Erro ao criar socket");
+
+	if(gethostname(hostName, 128)==-1){
+		printf("erro: gethostname\n");
+		return 0;
+	}
+
+	for (newfd = 1; newfd < argc ; newfd++){
+		if (!strcmp(argv[newfd], "-p")){
+				CSport = atoi(argv[newfd+1]);
+		}
+		else if (!strcmp(argv[newfd], "-n")){
+				strcpy(hostName, argv[newfd+1]);
+		}
+	}
+
 	struct sigaction new_actn, old_actn;
 	new_actn.sa_handler = SIG_IGN;
 	sigemptyset (&new_actn.sa_mask);
 	new_actn.sa_flags = 0;
 	sigaction (SIGPIPE, &new_actn, &old_actn);
 	char msg[80] = "";
-	char hostName[128];
 	char req[4] = "";
 	char fileName[40] = "";
-	if(gethostname(hostName, 128)==-1){
-		printf("erro: gethostname\n");
-		return 0;
-	}
 	hostptr = gethostbyname(hostName);
 
 

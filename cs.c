@@ -181,7 +181,7 @@ int main(int argc, char** argv){
 									return 0;
 								}
 								char commandHead[80] = "";
-								sprintf(commandHead, "WRQ %s %05d%03d %d ", task, fileCount, i, tempSize);  //WRQ PTC filename size data
+								sprintf(commandHead, "WRQ %s %05d%03d.txt %d ", task, fileCount, i, tempSize);  //WRQ PTC filename size data
 								printf("sending: %s\n", commandHead);
 								if(write(wFd, commandHead, strlen(commandHead)) == -1) // enviar head do comando
 									perror("ERROR: write to working server");

@@ -216,7 +216,7 @@ int main(int argc, char** argv){
 
 
 					}
-					else if(strncmp(buffer, "REP F ", 6) == 0){ //REP F size data
+					else if(strncmp(buffer, "REP F ", 6) == 0){ //REP F size filename data
 						char size[16] = "", fileName[9] = "";
 						int sizeInt, i, j, charsRead = 0;
 
@@ -225,7 +225,8 @@ int main(int argc, char** argv){
 						}
 						size[i-6] = '\0';
 						sizeInt = atoi(size);
-						for(j = ++i; buffer[i] != ' '; i++){
+						i++;
+						for(j = i; buffer[i] != ' '; i++){
 							fileName[i-j] = buffer[i];
 						}
 						fileName[i-j] = '\0';
@@ -233,26 +234,30 @@ int main(int argc, char** argv){
 						char *fileInBuffer = malloc(sizeof(char)*sizeInt+1);
 						fileInBuffer[0] = '\0';
 
-						for(j = ++i; i < strlen(buffer) && charsRead < sizeInt; i++){
+						printf("size: %s fileName: %s\nbuffer: %s\n bufferLen: %d\n", size, fileName, buffer, (int)strlen(buffer));
+						i++;
+						for(j = i; i < strlen(buffer) && charsRead < sizeInt; i++){
 							fileInBuffer[i-j] = buffer[i];
 							charsRead++;
+							printf("%c %d", buffer[i], i);
 						}
+						printf("to while\n");
 
-						while(charsRead<sizeInt){
+						while(charsRead<sizeInt-1){ //esta a mandar menos 1?? mario
 							int tempChars = read(newfd, buffer, sizeof(buffer)-1);
 							buffer[79] = '\0';
 							if(tempChars == -1)
 								perror("ERROR: reading rest of file");
 							else
 								charsRead += tempChars;
-							//printf("Read Already: %d; Read Now: %d;\n", charsRead, tempChars);
+							printf("Read Already: %d; Read Now: %d;\n", charsRead, tempChars);
 							strcat(fileInBuffer, buffer);
 						}
 
 						FILE *fp;
 						char directory[80];
 						sprintf(directory, "./output_files/%s", fileName);
-						printf("diretorio de file output: %s\n");
+						printf("diretorio de file output: %s\n", fileName);
 						fp = fopen(directory, "w+");
 						if(fp == NULL)
 							perror("ERROR: creating output file");

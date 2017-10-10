@@ -186,11 +186,6 @@ int main(int argc, char** argv){
 	serveraddr.sin_port = htons((u_short)PORT);
 	addrlen = sizeof(serveraddr);
 
-	if(connect(cs_tcp, (struct sockaddr*) &serveraddr, sizeof(serveraddr)) == -1){
-		printf("erro: connect");
-		return 0;
-	}
-
 	while(1){
 		addrlen = sizeof(clientaddr);
 		newfd = accept(fd_tcp, (struct sockaddr*) &clientaddr, &addrlen);
@@ -236,10 +231,11 @@ int main(int argc, char** argv){
 				fileName[i - 8] = buffer[i];
 			req[3] = '\0';
 			fileName[12] = '\0';
+			char* rep_msg;
 			printf("REQ: %s | fileName: %s\n", req, fileName);
 			if(!strcmp(req, "WCT")){
 				int wrd_count = 0;
-				char* rep_msg = (char*) malloc(sizeof(buffer));
+				rep_msg = (char*) malloc(sizeof(buffer));
 				rep_msg[0] = '\0';
 				wrd_count = doWordCount(data, charsRead);
 				strcat(rep_msg, "REP R ");
@@ -250,7 +246,7 @@ int main(int argc, char** argv){
 			}
 			else if(!strcmp(req, "FLW")){
 				/*char* longest_word;
-				char* rep_msg = (char*) malloc(sizeof(buffer));
+				rep_msg = (char*) malloc(sizeof(buffer));
 				longest_word = findLongestWord(fileName, data);
 				strcat(rep_msg, "REP R ");
 				strcat(rep_msg, size);
@@ -259,33 +255,42 @@ int main(int argc, char** argv){
 			}
 			else if(!strcmp(req, "UPP")){
 				printf("In Convert Upper\n");
-				char* rep_msg = malloc(sizeof(char) * (size_int + strlen(size) + 8));
+				rep_msg = malloc(sizeof(char) * (size_int + strlen(size) + 8));
 				rep_msg[0] = '\0';
 				char* data = convertUpper(fileInBuffer, charsRead);
 				strcat(rep_msg, "REP F ");
 				strcat(rep_msg, size);
 				strcat(rep_msg, " ");
+				strcat(rep_msg, fileName);
+				strcat(rep_msg, " ");
 				strcat(rep_msg, data);
-				printf("%s\n", rep_msg);
-				if(write(cs_tcp, rep_msg, strlen(rep_msg)) == -1)
-					perror("ERROR: write to working server");
+				printf("hey :: %s\n size: %d\n data: %s\n", rep_msg, (int)strlen(rep_msg), data);
 			}
 			else if(!strcmp(req, "LOW")){
 				printf("In Convert Lower\n");
-				char* rep_msg = malloc(sizeof(char) * (size_int + strlen(size) + 8));
+				rep_msg = malloc(sizeof(char) * (size_int + strlen(size) + 8));
 				rep_msg[0] = '\0';
 				char* data = convertLower(fileInBuffer, charsRead);
 				strcat(rep_msg, "REP F ");
 				strcat(rep_msg, size);
 				strcat(rep_msg, " ");
+				strcat(rep_msg, fileName);
+				strcat(rep_msg, " ");
 				strcat(rep_msg, data);
 				printf("%s\n", rep_msg);
-				if(write(cs_tcp, rep_msg, strlen(rep_msg)) == -1)
-					perror("ERROR: write to working server");
 			}
 			else{
 				//write ("WRP EOF");
 			}
+			if(connect(cs_tcp, (struct sockaddr*) &serveraddr, sizeof(serveraddr)) == -1){
+					perror("ERROR");
+					printf("erro: connect");
+					return 0;
+			}
+			int t = write(cs_tcp, rep_msg, strlen(rep_msg));
+			printf("wrote: %d\n", t);
+			if(t == -1)
+				perror("ERROR: write to working server");
 		}
 		else{
 			// write ("WRP ERR");
@@ -294,11 +299,6 @@ int main(int argc, char** argv){
 		cs_tcp = socket(AF_INET, SOCK_STREAM, 0);
 		if(cs_tcp == -1)
 			perror("Erro ao criar socket");
-		if(connect(cs_tcp, (struct sockaddr*) &serveraddr, sizeof(serveraddr)) == -1){
-				perror("ERROR");
-				printf("erro: connect");
-				return 0;
-		}
 	}
 	close(fd_tcp);
 	close(newfd);

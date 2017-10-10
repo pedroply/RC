@@ -9,7 +9,7 @@
 #include <stdlib.h>
 #include <ctype.h>
 
-int fd_udp,fd_tcp, newfd, last_i;
+int fd_udp,fd_tcp, newfd, cs_tcp, last_i;
 struct hostent *hostptr;
 int addrlen, ws_port = 59000, PORT = 58022;
 char buffer[80], buffer_test[80];
@@ -39,15 +39,15 @@ int doWordCount(char* data, int charsRead){
 	return count;*/
 	int i, count = 0;
 	for (i = 0; i < charsRead; i++){
-		if (data[i] == ' '){
+		if (data[i] == ' ' || data[i] == '\n'){
 			count++;
 		}
 	}
-	count++;
+	printf("IN WCT: %d\n", count);
 	return count;
 }
 
-char* findLongestWord(char* fileName, char* data){ //prob wrong af
+char* findLongestWord(char* data, int charsRead){ //prob wrong af
 	FILE *fp1;
 	char* a = (char*) malloc(sizeof(data));
 	fp1 = fopen(fileName, "r");
@@ -99,6 +99,7 @@ char* convertLower(char* data, int charsRead){
 
 int main(int argc, char** argv){
 	fd_udp = socket(AF_INET, SOCK_DGRAM, 0);
+	cs_tcp = socket(AF_INET, SOCK_STREAM, 0);
 	fd_tcp = socket(AF_INET, SOCK_STREAM, 0);
 	if(fd_udp == -1)
 		perror("Erro ao criar socket");
@@ -166,6 +167,7 @@ int main(int argc, char** argv){
 		perror("Error sending register message");
 		return 1;
 	}
+	close(fd_udp);
 
 	memset((void*) &serveraddr_tcp, (int)'\0', sizeof(serveraddr_tcp));
 	serveraddr_tcp.sin_family = AF_INET;
@@ -177,6 +179,16 @@ int main(int argc, char** argv){
 		perror("Error binding socket Tcp");
 
 	listen(fd_tcp, 5);
+
+	memset((void*) &serveraddr, (int)'\0', sizeof(serveraddr));
+	serveraddr.sin_family = AF_INET;
+	serveraddr.sin_addr.s_addr = ((struct in_addr*) (hostptr->h_addr_list[0]))->s_addr;
+	serveraddr.sin_port = htons((u_short)PORT);
+
+	if(connect(cs_tcp, (struct sockaddr*) &serveraddr, sizeof(serveraddr)) == -1){
+		printf("erro: connect");
+		return 0;
+	}
 
 	while(1){
 		addrlen = sizeof(clientaddr);
@@ -200,18 +212,16 @@ int main(int argc, char** argv){
 			int tempChars = read(newfd, buffer_test, sizeof(buffer_test)-1);
 			buffer_test[tempChars] = '\0';
 			strcat(fileInBuffer, buffer_test);
-			printf("FIB: %s | BUFFER %s | tempChars: %d\n", fileInBuffer, buffer_test, tempChars);
-
 			if(tempChars == -1)
 				perror("ERROR: reading rest of file");
 			else{
 				charsRead += tempChars;
 			}
 		}
-
-		//printf("%s\n", fileInBuffer);
-
 		if(!strncmp(buffer, "WRQ ", 4)){
+			if(bind(fd_tcp, (struct sockaddr*) &serveraddr_tcp, sizeof(serveraddr_tcp)) == -1)
+				perror("Error binding socket Tcp");
+			listen(fd_tcp, 5);
 			for(i = 4; i < 7; i++)
 				req[i-4] = buffer[i];
 			for (i = 8; i < 20; i++)
@@ -219,13 +229,19 @@ int main(int argc, char** argv){
 			req[3] = '\0';
 			fileName[12] = '\0';
 			printf("REQ: %s | fileName: %s\n", req, fileName);
+
 			if(!strcmp(req, "WCT")){
-				int wrd_count = 0;
+				printf("yoo\n");
+				int wrd_count = 0, lenght;
+				char wrd_count_len[16];
 				char* rep_msg = (char*) malloc(sizeof(buffer));
 				rep_msg[0] = '\0';
 				wrd_count = doWordCount(data, charsRead);
 				strcat(rep_msg, "REP R ");
-				//strcat(rep_msg, strlen(wrd_count));
+				dprintf(wrd_count, "%s", wrd_count_len);
+				lenght = strlen(wrd_count_len);
+				dprintf(lenght, "%s", wrd_count_len);
+				strcat(rep_msg, wrd_count_len);
 				strcat(rep_msg, " ");
 				strcat(rep_msg, data);
 				printf("%s\n", rep_msg);
@@ -249,7 +265,7 @@ int main(int argc, char** argv){
 				strcat(rep_msg, " ");
 				strcat(rep_msg, data);
 				printf("%s\n", rep_msg);
-				if(write(newfd, rep_msg, strlen(rep_msg)) == -1)
+				if(write(cs_tcp, rep_msg, strlen(rep_msg)) == -1)
 					perror("ERROR: write to working server");
 			}
 			else if(!strcmp(req, "LOW")){
@@ -262,7 +278,7 @@ int main(int argc, char** argv){
 				strcat(rep_msg, " ");
 				strcat(rep_msg, data);
 				printf("%s\n", rep_msg);
-				if(write(newfd, rep_msg, strlen(rep_msg)) == -1)
+				if(write(cs_tcp, rep_msg, strlen(rep_msg)) == -1)
 					perror("ERROR: write to working server");
 			}
 			else{
@@ -272,9 +288,18 @@ int main(int argc, char** argv){
 		else{
 			// write ("WRP ERR");
 		}
-	}
+		close(cs_tcp);
+		cs_tcp = socket(AF_INET, SOCK_STREAM, 0);
+		if(cs_tcp == -1)
+			perror("Erro ao criar socket");
+
+		if(connect(cs_tcp, (struct sockaddr*) &serveraddr, sizeof(serveraddr)) == -1){
+			perror("ERROR");
+			printf("erro: connect");
+			return 0;
+			}
+		}
 	close(fd_tcp);
 	close(newfd);
-	close(fd_udp);
 	return 0;
 }

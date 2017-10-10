@@ -218,10 +218,8 @@ int main(int argc, char** argv){
 				charsRead += tempChars;
 			}
 		}
+		printf("%s\n", buffer);
 		if(!strncmp(buffer, "WRQ ", 4)){
-			if(bind(fd_tcp, (struct sockaddr*) &serveraddr_tcp, sizeof(serveraddr_tcp)) == -1)
-				perror("Error binding socket Tcp");
-			listen(fd_tcp, 5);
 			for(i = 4; i < 7; i++)
 				req[i-4] = buffer[i];
 			for (i = 8; i < 20; i++)

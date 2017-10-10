@@ -14,7 +14,7 @@
 int tcpFd, udpFd, newfd, maxfd, counter, wFd, fileCount = 0;
 fd_set rfds;
 struct hostent *hostptr;
-int addrlen, state = 0;
+int addrlen, CSport = PORT;
 char buffer[80];
 struct sockaddr_in serveraddr, clientaddr, addr;
 char hostName[128];
@@ -27,7 +27,7 @@ struct filePartitions{
 
 struct filePartitions* fileParts[80] = {NULL};
 
-int main(){
+int main(int argc, char** argv){
 	tcpFd = socket(AF_INET, SOCK_STREAM, 0);
 	wFd = socket(AF_INET, SOCK_STREAM, 0);
   udpFd = socket(AF_INET, SOCK_DGRAM, 0);
@@ -37,6 +37,12 @@ int main(){
 		perror("Erro ao criar socket Udp");
 	if(wFd == -1)
 		perror("Erro ao criar socket Tcp Working Servers");
+
+	for (maxfd = 1; maxfd < argc ; maxfd++){
+		if (!strcmp(argv[maxfd], "-p")){
+			CSport = atoi(argv[maxfd+1]);
+		}
+	}
 
 	fileProcessingTasks = (FILE*)fopen("fileprocessingtasks.txt", "w+");
 	fclose(fileProcessingTasks);
@@ -51,7 +57,7 @@ int main(){
 	memset((void*) &serveraddr, (int)'\0', sizeof(serveraddr));
 	serveraddr.sin_family = AF_INET;
 	serveraddr.sin_addr.s_addr = htonl(INADDR_ANY);
-	serveraddr.sin_port = htons((u_short)PORT);
+	serveraddr.sin_port = htons((u_short)CSport);
 
 	if(bind(tcpFd, (struct sockaddr*) &serveraddr, sizeof(serveraddr)) == -1)
 		perror("Error binding socket Tcp");

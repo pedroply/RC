@@ -1,5 +1,6 @@
 #include <unistd.h>
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netdb.h>
@@ -19,6 +20,13 @@ struct sockaddr_in serveraddr, clientaddr, addr;
 char hostName[128];
 FILE *fileProcessingTasks;
 
+struct filePartitions{
+	int fileNumber;
+	int filePartitionsLeft;
+};
+
+struct filePartitions* fileParts[80] = {NULL};
+
 int main(){
 	tcpFd = socket(AF_INET, SOCK_STREAM, 0);
 	wFd = socket(AF_INET, SOCK_STREAM, 0);
@@ -33,7 +41,10 @@ int main(){
 	fileProcessingTasks = (FILE*)fopen("fileprocessingtasks.txt", "w+");
 	fclose(fileProcessingTasks);
 
-	mkdir("/input_files", 0700); //n esta a criar diretorio
+	if(mkdir("./input_files", 0777) == -1)
+	 	perror("ERROR: creating input_files directory"); //n esta a criar diretorio
+	if(mkdir("./output_files", 0777) == -1)
+	 	perror("ERROR: creating output_files directory"); //n esta a criar diretorio
 
 	char msg[80] = "hi from server";
 
@@ -75,7 +86,7 @@ int main(){
 					while(read(newfd, buffer, sizeof(buffer)-1) == 0);
 					buffer[79] = '\0';
 
-					printf("%s, %d\n", buffer, (int)strlen(buffer));
+					//printf("%s, %d\n", buffer, (int)strlen(buffer));
 					if(strcmp(buffer, "LST\n") == 0){
 						write(newfd, "FPT 4 WCT FLW UPP LOW\n", sizeof("FPT 4 WCT FLW UPP LOW\n"));
 					}
@@ -116,14 +127,16 @@ int main(){
 							if(fileInBuffer[i] == '\n')
 								newLineCount++;*/
 
-						fileCount++;
-
 						FILE *fp;
 						char directory[80];
-						sprintf(directory, "/input_files/%05d.txt", fileCount);
+						sprintf(directory, "./input_files/%05d.txt", fileCount);
 						fp = fopen(directory, "w+");
+						if(fp == NULL)
+							perror("ERROR: creating file .txt");
 						fputs(fileInBuffer, fp);
-						fclose(fp);
+						fclose(fp);;
+
+						fileCount++;
 
 						//printf("task:%s size:%s\n input: %s\n", task, size, fileInBuffer);
 
@@ -139,7 +152,7 @@ int main(){
 
 						int tempSize = sizeInt/serversSuported;
 						int start = 0;
-
+						i = 0;
 						while(fscanf(fileProcessingTasks, "%s %s %s", taskTemp, ipTemp, portTemp) > 0){
 							//printf("%s\n", taskTemp);
 
@@ -162,7 +175,7 @@ int main(){
 									return 0;
 								}
 								char commandHead[80] = "";
-								sprintf(commandHead, "WRQ %s %s %d ", task, "filename.txt", tempSize);  //WRQ PTC filename size data
+								sprintf(commandHead, "WRQ %s %05d%03d %d ", task, fileCount, i, tempSize);  //WRQ PTC filename size data
 								printf("sending: %s\n", commandHead);
 								if(write(wFd, commandHead, strlen(commandHead)) == -1) // enviar head do comando
 									perror("ERROR: write to working server");
@@ -179,39 +192,26 @@ int main(){
 									perror("Erro ao criar socket Tcp Working Servers");
 								start = tempSize+1;
 								tempSize = sizeInt/serversSuported;
+								i++;
+							}
+						}
+
+						//add to vector containing file partitions
+
+						for(j = 0; j<80; j++){
+							if(fileParts[j] == NULL || fileParts[j]->filePartitionsLeft == 0){
+								free(fileParts[j]);
+								fileParts[j] = malloc(sizeof(struct filePartitions));
+								fileParts[j]->fileNumber = fileCount - 1;
+								fileParts[j]->filePartitionsLeft = i;
 							}
 						}
 
 
-						/*if(gethostname(hostName, 128)==-1){
-							printf("erro: gethostname\n");
-							return 0;
-						}
-						hostptr = gethostbyname(hostName);
-
-
-						memset((void*) &addr, (int)'\0', sizeof(addr));
-						addr.sin_family = AF_INET;
-						addr.sin_addr.s_addr = ((struct in_addr*) (hostptr->h_addr_list[0]))->s_addr;
-						addr.sin_port = htons((u_short)59000);
-
-						if(connect(wFd, (struct sockaddr*) &addr, sizeof(addr)) == -1){
-							perror("ERROR: connecting working server tcp");
-							return 0;
-						}
-
-						if(write(wFd, "WRQ UPP 12345678.txt 102462524 ola o mario e super gay ehehehe", sizeof("WRQ UPP 12345678.txt 102462524 ola o mario e super gay ehehehe")) == -1)
-							perror("ERROR: write to working server");
-
-						close(wFd);
-						wFd = socket(AF_INET, SOCK_STREAM, 0);
-						if(wFd == -1)
-							perror("Erro ao criar socket Tcp Working Servers");*/
-
 
 					}
 					else if(strncmp(buffer, "REP F ", 6) == 0){ //REP F size data
-						char size[16] = "";
+						char size[16] = "", fileName[9] = "";
 						int sizeInt, i, j, charsRead = 0;
 
 						for(i = 6; buffer[i] != ' '; i++){
@@ -219,6 +219,10 @@ int main(){
 						}
 						size[i-6] = '\0';
 						sizeInt = atoi(size);
+						for(j = ++i; buffer[i] != ' '; i++){
+							fileName[i-j] = buffer[i];
+						}
+						fileName[i-j] = '\0';
 
 						char *fileInBuffer = malloc(sizeof(char)*sizeInt+1);
 						fileInBuffer[0] = '\0';
@@ -238,6 +242,26 @@ int main(){
 							//printf("Read Already: %d; Read Now: %d;\n", charsRead, tempChars);
 							strcat(fileInBuffer, buffer);
 						}
+
+						FILE *fp;
+						char directory[80];
+						sprintf(directory, "./output_files/%s", fileName);
+						printf("diretorio de file output: %s\n");
+						fp = fopen(directory, "w+");
+						if(fp == NULL)
+							perror("ERROR: creating output file");
+						fputs(fileInBuffer, fp);
+						fclose(fp);
+
+						/*for(j = 0; j<80; j++){
+							if(fileParts[j] != NULL || fileParts[j]->fileNumber == 0){ //vereficar se e a file atual atoi filename dos 5 primeiros digitos
+								free(fileParts[j]);
+								fileParts[j] = malloc(sizeof(struct filePartitions));
+								fileParts[j]->fileNumber = fileCount - 1;
+								fileParts[j]->filePartitionsLeft = i;
+							}
+						}*/
+
 
 
 

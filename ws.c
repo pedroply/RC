@@ -12,7 +12,7 @@
 int fd_udp,fd_tcp, newfd, last_i;
 struct hostent *hostptr;
 int addrlen, ws_port = 59000, PORT = 58022;
-char buffer[40], buffer_test[80];
+char buffer[80], buffer_test[80];
 char req[4] = "";
 char fileName[40] = "";
 char data[40] =""; //PLACEHOLDER
@@ -22,8 +22,8 @@ struct sockaddr_in serveraddr, serveraddr_tcp, clientaddr;
 struct in_addr *a;
 struct hostent *h;
 
-int doWordCount(char* fileName, char* data){
-	FILE *fp1;
+int doWordCount(char* data, int charsRead){
+	/*FILE *fp1;
 	char a;
 	int count = 0;
 	fp1 = fopen(fileName, "r");
@@ -36,6 +36,14 @@ int doWordCount(char* fileName, char* data){
 	count++;
 	fclose(fp1);
 	printf("%d\n", count);
+	return count;*/
+	int i, count = 0;
+	for (i = 0; i < charsRead; i++){
+		if (data[i] == ' '){
+			count++;
+		}
+	}
+	count++;
 	return count;
 }
 
@@ -63,16 +71,16 @@ char* findLongestWord(char* fileName, char* data){ //prob wrong af
 	return longestWord;
 }
 
-char* convertUpper(char* data){
+char* convertUpper(char* data, int charsRead){
 	int i;
-	for (i = 0; data[i] != '\n'; i++){
+	for (i = 0; i < charsRead; i++){
 		data[i] = toupper(data[i]);
 	}
 	return data;
 }
 
-void convertLower(char* fileName, char* data){
-	FILE *fp1;
+char* convertLower(char* data, int charsRead){
+	/*FILE *fp1;
 	char a;
 	fp1 = fopen(fileName, "r");
 	while (a != EOF){
@@ -81,7 +89,12 @@ void convertLower(char* fileName, char* data){
 		printf("%c", a);
 	}
 	printf("\n");
-	fclose(fp1);
+	fclose(fp1);*/
+	int i;
+	for (i = 0; i < charsRead; i++){
+		data[i] = tolower(data[i]);
+	}
+	return data;
 }
 
 int main(int argc, char** argv){
@@ -159,6 +172,7 @@ int main(int argc, char** argv){
 	serveraddr_tcp.sin_addr.s_addr = htonl(INADDR_ANY);
 	serveraddr_tcp.sin_port = htons((u_short)ws_port);
 
+
 	if(bind(fd_tcp, (struct sockaddr*) &serveraddr_tcp, sizeof(serveraddr_tcp)) == -1)
 		perror("Error binding socket Tcp");
 
@@ -170,8 +184,8 @@ int main(int argc, char** argv){
 		if (newfd == -1){
 			perror("Error accept");
 		}
-		while(read(newfd, buffer, sizeof(buffer)) == 0);
-		printf("%s\n", buffer);
+		while(read(newfd, buffer, sizeof(buffer)-1) == 0);
+		buffer[79] = '\0';
 		int j = 0, charsRead = 0;
 		for(i = 21; buffer[i] != ' '; i++){
 					size[j] = buffer [i];
@@ -181,15 +195,22 @@ int main(int argc, char** argv){
 		size_int = atoi(size);
 		printf("%d\n", size_int);
 		char *fileInBuffer = malloc(sizeof(char)*size_int+1);
-		for(j = ++i; i<strlen(buffer); i++){
-			fileInBuffer[i-j] = buffer[i];
-			charsRead++;
-		}
+		fileInBuffer[0] = '\0';
 		while(charsRead<size_int){
-			charsRead += read(newfd, buffer_test, sizeof(buffer_test));
+			int tempChars = read(newfd, buffer_test, sizeof(buffer_test)-1);
+			buffer_test[tempChars] = '\0';
 			strcat(fileInBuffer, buffer_test);
-			printf("%s\n", fileInBuffer);
+			printf("FIB: %s | BUFFER %s | tempChars: %d\n", fileInBuffer, buffer_test, tempChars);
+
+			if(tempChars == -1)
+				perror("ERROR: reading rest of file");
+			else{
+				charsRead += tempChars;
+			}
 		}
+
+		//printf("%s\n", fileInBuffer);
+
 		if(!strncmp(buffer, "WRQ ", 4)){
 			for(i = 4; i < 7; i++)
 				req[i-4] = buffer[i];
@@ -199,10 +220,15 @@ int main(int argc, char** argv){
 			fileName[12] = '\0';
 			printf("REQ: %s | fileName: %s\n", req, fileName);
 			if(!strcmp(req, "WCT")){
-				/*int wrd_count = 0;
+				int wrd_count = 0;
 				char* rep_msg = (char*) malloc(sizeof(buffer));
-				wrd_count = doWordCount(fileName, data);*/
-				//process reply message with result
+				rep_msg[0] = '\0';
+				wrd_count = doWordCount(data, charsRead);
+				strcat(rep_msg, "REP R ");
+				//strcat(rep_msg, strlen(wrd_count));
+				strcat(rep_msg, " ");
+				strcat(rep_msg, data);
+				printf("%s\n", rep_msg);
 			}
 			else if(!strcmp(req, "FLW")){
 				/*char* longest_word;
@@ -215,23 +241,29 @@ int main(int argc, char** argv){
 			}
 			else if(!strcmp(req, "UPP")){
 				printf("In Convert Upper\n");
-				//char* rep_msg = malloc(sizeof(char) * (size_int + strlen(size) + 8));
-				char* data = convertUpper(fileInBuffer);
-				printf("%s\n", data);
-				/*strcat(rep_msg, "REP F ");
+				char* rep_msg = malloc(sizeof(char) * (size_int + strlen(size) + 8));
+				rep_msg[0] = '\0';
+				char* data = convertUpper(fileInBuffer, charsRead);
+				strcat(rep_msg, "REP F ");
 				strcat(rep_msg, size);
 				strcat(rep_msg, " ");
 				strcat(rep_msg, data);
+				printf("%s\n", rep_msg);
 				if(write(newfd, rep_msg, strlen(rep_msg)) == -1)
-					perror("ERROR: write to working server");*/
+					perror("ERROR: write to working server");
 			}
 			else if(!strcmp(req, "LOW")){
 				printf("In Convert Lower\n");
-				/*char* rep_msg = (char*) malloc(sizeof(buffer));
-				convertLower(fileName, data);
+				char* rep_msg = malloc(sizeof(char) * (size_int + strlen(size) + 8));
+				rep_msg[0] = '\0';
+				char* data = convertLower(fileInBuffer, charsRead);
 				strcat(rep_msg, "REP F ");
 				strcat(rep_msg, size);
-				strcat(rep_msg, data);*/
+				strcat(rep_msg, " ");
+				strcat(rep_msg, data);
+				printf("%s\n", rep_msg);
+				if(write(newfd, rep_msg, strlen(rep_msg)) == -1)
+					perror("ERROR: write to working server");
 			}
 			else{
 				//write ("WRP EOF");

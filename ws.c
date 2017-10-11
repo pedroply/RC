@@ -192,113 +192,114 @@ int main(int argc, char** argv){
 		if (newfd == -1){
 			perror("Error accept");
 		}
-		while(read(newfd, buffer, sizeof(buffer)-1) == 0);
-		buffer[79] = '\0';
-		printf("BUFF%s\n", buffer);
-		int j = 0, charsRead = 0;
-		for(i = 21; buffer[i] != ' '; i++){
-					size[j] = buffer [i];
-					j++;
-		}
-		size[j] = '\0';
-		size_int = atoi(size);
-		printf("%d\n", size_int);
-		char *fileInBuffer = malloc(sizeof(char)*size_int+1);
-		fileInBuffer[0] = '\0';
-		for(j = ++i; i<strlen(buffer); i++){
-			fileInBuffer[i-j] = buffer[i];
-			charsRead++;
-		}
-		while(charsRead<size_int){
-			int tempChars = read(newfd, buffer_test, sizeof(buffer_test)-1);
-			buffer_test[tempChars] = '\0';
-			strcat(fileInBuffer, buffer_test);
-			//printf("FIB: %s | BUFFER %s | tempChars: %d\n", fileInBuffer, buffer_test, tempChars);
 
-			if(tempChars == -1)
-				perror("ERROR: reading rest of file");
-			else{
-				charsRead += tempChars;
-			}
-		}
+		int childPid = fork();
 
-		printf("%s\n", fileInBuffer);
+		if(childPid == 0){ //child code
+			while(read(newfd, buffer, sizeof(buffer)-1) == 0);
+			buffer[79] = '\0';
+			printf("BUFF%s\n", buffer);
+			int j = 0, charsRead = 0;
+			for(i = 21; buffer[i] != ' '; i++){
+						size[j] = buffer [i];
+						j++;
+			}
+			size[j] = '\0';
+			size_int = atoi(size);
+			printf("%d\n", size_int);
+			char *fileInBuffer = malloc(sizeof(char)*size_int+1);
+			fileInBuffer[0] = '\0';
+			for(j = ++i; i<strlen(buffer); i++){
+				fileInBuffer[i-j] = buffer[i];
+				charsRead++;
+			}
+			while(charsRead<size_int){
+				int tempChars = read(newfd, buffer_test, sizeof(buffer_test)-1);
+				buffer_test[tempChars] = '\0';
+				strcat(fileInBuffer, buffer_test);
+				//printf("FIB: %s | BUFFER %s | tempChars: %d\n", fileInBuffer, buffer_test, tempChars);
 
-		if(!strncmp(buffer, "WRQ ", 4)){
-			for(i = 4; i < 7; i++)
-				req[i-4] = buffer[i];
-			for (i = 8; i < 20; i++)
-				fileName[i - 8] = buffer[i];
-			req[3] = '\0';
-			fileName[12] = '\0';
-			char* rep_msg;
-			printf("REQ: %s | fileName: %s\n", req, fileName);
-			if(!strcmp(req, "WCT")){
-				int wrd_count = 0;
-				rep_msg = (char*) malloc(sizeof(buffer));
-				rep_msg[0] = '\0';
-				wrd_count = doWordCount(data, charsRead);
-				strcat(rep_msg, "REP R ");
-				//strcat(rep_msg, strlen(wrd_count));
-				strcat(rep_msg, " ");
-				strcat(rep_msg, data);
-				printf("%s\n", rep_msg);
+				if(tempChars == -1)
+					perror("ERROR: reading rest of file");
+				else{
+					charsRead += tempChars;
+				}
 			}
-			else if(!strcmp(req, "FLW")){
-				/*char* longest_word;
-				rep_msg = (char*) malloc(sizeof(buffer));
-				longest_word = findLongestWord(fileName, data);
-				strcat(rep_msg, "REP R ");
-				strcat(rep_msg, size);
-				strcat(rep_msg, data);*/
-				//process reply message with result
+
+			printf("%s\n", fileInBuffer);
+
+			if(!strncmp(buffer, "WRQ ", 4)){
+				for(i = 4; i < 7; i++)
+					req[i-4] = buffer[i];
+				for (i = 8; i < 20; i++)
+					fileName[i - 8] = buffer[i];
+				req[3] = '\0';
+				fileName[12] = '\0';
+				char* rep_msg;
+				printf("REQ: %s | fileName: %s\n", req, fileName);
+				if(!strcmp(req, "WCT")){
+					int wrd_count = 0;
+					rep_msg = (char*) malloc(sizeof(buffer));
+					rep_msg[0] = '\0';
+					wrd_count = doWordCount(data, charsRead);
+					strcat(rep_msg, "REP R ");
+					//strcat(rep_msg, strlen(wrd_count));
+					strcat(rep_msg, " ");
+					strcat(rep_msg, data);
+					printf("%s\n", rep_msg);
+				}
+				else if(!strcmp(req, "FLW")){
+					/*char* longest_word;
+					rep_msg = (char*) malloc(sizeof(buffer));
+					longest_word = findLongestWord(fileName, data);
+					strcat(rep_msg, "REP R ");
+					strcat(rep_msg, size);
+					strcat(rep_msg, data);*/
+					//process reply message with result
+				}
+				else if(!strcmp(req, "UPP")){
+					printf("In Convert Upper\n");
+					rep_msg = malloc(sizeof(char) * (size_int + strlen(size) + 8));
+					rep_msg[0] = '\0';
+					char* data = convertUpper(fileInBuffer, charsRead);
+					strcat(rep_msg, "REP F ");
+					strcat(rep_msg, size);
+					strcat(rep_msg, " ");
+					strcat(rep_msg, data);
+					printf("hey :: %s\n size: %d\n data: %s\n", rep_msg, (int)strlen(rep_msg), data);
+				}
+				else if(!strcmp(req, "LOW")){
+					printf("In Convert Lower\n");
+					rep_msg = malloc(sizeof(char) * (size_int + strlen(size) + 8));
+					rep_msg[0] = '\0';
+					char* data = convertLower(fileInBuffer, charsRead);
+					strcat(rep_msg, "REP F ");
+					strcat(rep_msg, size);
+					strcat(rep_msg, " ");
+					strcat(rep_msg, data);
+					printf("%s\n", rep_msg);
+				}
+				else{
+					//write ("WRP EOF");
+				}
+				int t = write(newfd, rep_msg, strlen(rep_msg));
+				printf("wrote: %d\n", t);
+				if(t == -1)
+					perror("ERROR: write to working server");
+
+				close(newfd);
+
 			}
-			else if(!strcmp(req, "UPP")){
-				printf("In Convert Upper\n");
-				rep_msg = malloc(sizeof(char) * (size_int + strlen(size) + 8));
-				rep_msg[0] = '\0';
-				char* data = convertUpper(fileInBuffer, charsRead);
-				strcat(rep_msg, "REP F ");
-				strcat(rep_msg, size);
-				strcat(rep_msg, " ");
-				strcat(rep_msg, fileName);
-				strcat(rep_msg, " ");
-				strcat(rep_msg, data);
-				printf("hey :: %s\n size: %d\n data: %s\n", rep_msg, (int)strlen(rep_msg), data);
+			else if(childPid == -1){
+				perror("ERROR: create child");
 			}
-			else if(!strcmp(req, "LOW")){
-				printf("In Convert Lower\n");
-				rep_msg = malloc(sizeof(char) * (size_int + strlen(size) + 8));
-				rep_msg[0] = '\0';
-				char* data = convertLower(fileInBuffer, charsRead);
-				strcat(rep_msg, "REP F ");
-				strcat(rep_msg, size);
-				strcat(rep_msg, " ");
-				strcat(rep_msg, fileName);
-				strcat(rep_msg, " ");
-				strcat(rep_msg, data);
-				printf("%s\n", rep_msg);
+			else{ // parent code
+				close(newfd);
 			}
-			else{
-				//write ("WRP EOF");
-			}
-			if(connect(cs_tcp, (struct sockaddr*) &serveraddr, sizeof(serveraddr)) == -1){
-					perror("ERROR");
-					printf("erro: connect");
-					return 0;
-			}
-			int t = write(cs_tcp, rep_msg, strlen(rep_msg));
-			printf("wrote: %d\n", t);
-			if(t == -1)
-				perror("ERROR: write to working server");
 		}
 		else{
 			// write ("WRP ERR");
 		}
-		close(cs_tcp);
-		cs_tcp = socket(AF_INET, SOCK_STREAM, 0);
-		if(cs_tcp == -1)
-			perror("Erro ao criar socket");
 	}
 	close(fd_tcp);
 	close(newfd);

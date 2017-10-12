@@ -66,6 +66,8 @@ int main(int argc, char** argv){
   if(bind(udpFd, (struct sockaddr*) &serveraddr, sizeof(serveraddr)) == -1)
 		perror("Error binding socket Udp");
 
+	addrlen = sizeof(clientaddr);
+
 	listen(tcpFd, 5);
 
 	while(1){
@@ -83,7 +85,6 @@ int main(int argc, char** argv){
 
 		for(;counter; counter--){
 			if(FD_ISSET(tcpFd,&rfds)){
-				addrlen = sizeof(clientaddr);
 				newfd = accept(tcpFd, (struct sockaddr*) &clientaddr, &addrlen);
 				if(newfd == -1){
 					perror("ERROR: accept");
@@ -134,6 +135,8 @@ int main(int argc, char** argv){
 							if(fileInBuffer[i] == '\n')
 								newLineCount++;*/
 
+						fileCount++;
+
 						FILE *fp;
 						char directory[80];
 						sprintf(directory, "./input_files/%05d.txt", fileCount);
@@ -143,7 +146,6 @@ int main(int argc, char** argv){
 						fputs(fileInBuffer, fp);
 						fclose(fp);;
 
-						fileCount++;
 
 						//printf("task:%s size:%s\n input: %s\n", task, size, fileInBuffer);
 
@@ -298,6 +300,42 @@ int main(int argc, char** argv){
 
 						printf("All files processed should be in output_files\n");
 
+						//i num de sub files
+						//sizeInt num de caracteres sem \0
+						//fileCount numero de files processadas sendo a filecount a atual
+						for(j = 0; j<i; j++){
+							FILE *fp;
+							char directory[80];
+							sprintf(directory, "./output_files/%05d%03d", fileCount, j);
+							fp = fopen(directory, "r");
+							if(fp == NULL)
+								perror("ERROR: reading one of the output files");
+							char c, *tempString;
+							tempString = malloc(sizeInt+1);
+							tempString[0] = '\0';
+							int k;
+							for(k = 0; (c = fgetc(fp)) != EOF; k++) {
+				        tempString[k] = c;
+					    }
+							tempString[k] = '\0';
+							strcat(fileInBuffer, tempString);
+							fclose(fp);
+						}
+
+						//fileInBuffer has the complete processed file
+						//has to responde with result to the user
+
+						//REP R/F size data
+
+						//char response[sizeInt+16+4+2+2] = "REP F ";
+						char *response = malloc(sizeInt+16+4+2+2);
+						response[0] = '\0';
+						strcat(response, "REP F ");
+						strcat(response, size);
+						strcat(response, " ");
+						strcat(response, fileInBuffer);
+						write(newfd, response, strlen(response));
+
 					}
 					else
 						write(newfd, "REQ ERR\n", sizeof("REQ ERR\n"));
@@ -321,7 +359,7 @@ int main(int argc, char** argv){
 
 				if(strncmp(buffer, "REG ", 4) != 0){
 					printf("mensagem reg ws desconhecida\n");
-					if(sendto(udpFd, "RAK NOK\n", strlen("RAK NOK\n"),0, (struct sockaddr*) &clientaddr, addrlen) == -1)
+					if(sendto(udpFd, "RAK NOK\n", (int)strlen("RAK NOK\n"),0, (struct sockaddr*) &clientaddr, addrlen) == -1)
 						perror("Error sending register message");
 					break;
 				}
@@ -337,7 +375,7 @@ int main(int argc, char** argv){
 				//printf("caractere actual: %c size buffer: %d i: %d\n", buffer[i], strlen(buffer), i);
 				if(j == -1){
 					printf("mensagem do ws mal formulada\n");
-					if(sendto(udpFd, "RAK NOK\n", strlen("RAK NOK\n"),0, (struct sockaddr*) &clientaddr, addrlen) == -1)
+					if(sendto(udpFd, "RAK NOK\n", (int)strlen("RAK NOK\n"),0, (struct sockaddr*) &clientaddr, addrlen) == -1)
 						perror("Error sending register message");
 					break;
 				}
@@ -361,9 +399,9 @@ int main(int argc, char** argv){
 						break;
 					}
 				}
-				if(fscanf(fileProcessingTasks, "%s %s %s", tempTask, tempIp, tempPort) <= 0){
+				if(fscanf(fileProcessingTasks, "%s %s %s", tempTask, tempIp, tempPort) > 0){
 					printf("servidor ws ja registado\n");
-					if(sendto(udpFd, "RAK ERR\n", strlen("RAK ERR\n"),0, (struct sockaddr*) &clientaddr, addrlen) == -1)
+					if(sendto(udpFd, "RAK ERR\n", (int)strlen("RAK ERR\n"),0, (struct sockaddr*) &clientaddr, addrlen) == -1)
 						perror("Error sending register message");
 					break;
 				}

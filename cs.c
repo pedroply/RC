@@ -164,9 +164,11 @@ int main(int argc, char** argv){
 							//printf("%s\n", taskTemp);
 
 							if(!strcmp(taskTemp, task)){ //dividir e mandar
-								if(tempSize + start < sizeInt)
+								if(tempSize + start < sizeInt){
 									while(fileInBuffer[tempSize+start] != '\n')
 										tempSize++;
+									tempSize++;
+									}
 								else
 									tempSize = sizeInt - start;
 
@@ -193,7 +195,7 @@ int main(int argc, char** argv){
 									if(write(wFd, commandHead, strlen(commandHead)) == -1) // enviar head do comando
 										perror("ERROR: write to working server");
 
-									printf("sendind: ");
+									printf("sendind: %s\nstart: %d, tempsize: %d\n", fileInBuffer, start, tempSize);
 									write(1, fileInBuffer+start, tempSize);
 									printf("\n");
 
@@ -210,8 +212,12 @@ int main(int argc, char** argv){
 
 									printf("waiting for response\n");
 
-									while(read(wFd, buffer, sizeof(buffer)-1) == 0);
-									buffer[79] = '\0';
+									i = read(wFd, buffer, sizeof(buffer)-1);
+									while(i == 0){
+										i = read(wFd, buffer, sizeof(buffer)-1);
+									}
+									printf("i: %d\n", i);
+									buffer[i] = '\0';
 
 									printf("buffer: %s\n", buffer);
 
@@ -227,24 +233,26 @@ int main(int argc, char** argv){
 										fileInBuffer = malloc(sizeof(char)*sizeInt+1);
 										fileInBuffer[0] = '\0';
 
-										printf("size: %s\nbuffer: %s\nbufferLen: %d\n", size, buffer, (int)strlen(buffer));
+										//printf("size: %s\nbuffer: %s\nbufferLen: %d\n", size, buffer, (int)strlen(buffer));
 										i++;
 										for(j = i; i < strlen(buffer) && charsRead < sizeInt; i++){
 											fileInBuffer[i-j] = buffer[i];
 											charsRead++;
 											printf("%c %d", buffer[i], i);
 										}
-										printf("to while falta ler%d\n", sizeInt-charsRead);
+										fileInBuffer[i-j] = '\0';
+										//printf("to while falta ler%d\n", sizeInt-charsRead);
 
 										while(charsRead<sizeInt-1){ //esta a mandar menos 1?? mario
 											int tempChars = read(wFd, buffer, sizeof(buffer)-1);
-											buffer[79] = '\0';
+											buffer[tempChars] = '\0';
 											if(tempChars == -1)
 												perror("ERROR: reading rest of file");
 											else
 												charsRead += tempChars;
-											printf("Read Already: %d; Read Now: %d;\n", charsRead, tempChars);
+											//printf("Read Already: %d; Read Now: %d;\n", charsRead, tempChars);
 											strcat(fileInBuffer, buffer);
+											printf("buffer: %s\n", buffer);
 										}
 
 										printf("%s\n", fileInBuffer);
@@ -277,7 +285,7 @@ int main(int argc, char** argv){
 									wFd = socket(AF_INET, SOCK_STREAM, 0);
 									if(wFd == -1)
 										perror("Erro ao criar socket Tcp Working Servers");
-									start = tempSize+1;
+									start += tempSize;
 									tempSize = sizeInt/serversSuported;
 									i++;
 								}
@@ -307,8 +315,16 @@ int main(int argc, char** argv){
 			else if(FD_ISSET(udpFd,&rfds)){
 				recvfrom(udpFd, buffer, sizeof(buffer), 0, (struct sockaddr*) &clientaddr, &addrlen);  //REG WCT UPP 127.0.1.1 59000
 				int i, j = -1;
-				char ip[15] = "";
-				char port[7] = "";
+				char ip[15] = "", tempIp[15] = "";
+				char port[7] = "", tempPort[7] = "";
+				char tempTask[4] = "";
+
+				if(strncmp(buffer, "REG ", 4) != 0){
+					printf("mensagem reg ws desconhecida\n");
+					if(sendto(udpFd, "RAK NOK\n", strlen("RAK NOK\n"),0, (struct sockaddr*) &clientaddr, addrlen) == -1)
+						perror("Error sending register message");
+					break;
+				}
 
 				for(i = strlen(buffer); i>0; i--){
 					if(buffer[i] > 47 && buffer[i] < 58) //numero
@@ -319,8 +335,12 @@ int main(int argc, char** argv){
 							}
 				}
 				//printf("caractere actual: %c size buffer: %d i: %d\n", buffer[i], strlen(buffer), i);
-				if(j == -1)
-					printf("mensagem do ws mal formulada");
+				if(j == -1){
+					printf("mensagem do ws mal formulada\n");
+					if(sendto(udpFd, "RAK NOK\n", strlen("RAK NOK\n"),0, (struct sockaddr*) &clientaddr, addrlen) == -1)
+						perror("Error sending register message");
+					break;
+				}
 				for(j = 0; i<strlen(buffer) && buffer[i] != ' '; i++){
 					ip[j] = buffer[i];
 					j++;
@@ -332,6 +352,22 @@ int main(int argc, char** argv){
 					j++;
 				}
 				port[j] = '\0';
+
+				//check for repeated ip and port combo
+				fileProcessingTasks = (FILE*)fopen("fileprocessingtasks.txt", "r");
+				while(fscanf(fileProcessingTasks, "%s %s %s", tempTask, tempIp, tempPort) > 0){
+					//printf("%s\n", taskTemp);
+					if(!strcmp(ip, tempIp) && !strcmp(port, tempPort)){
+						break;
+					}
+				}
+				if(fscanf(fileProcessingTasks, "%s %s %s", tempTask, tempIp, tempPort) <= 0){
+					printf("servidor ws ja registado\n");
+					if(sendto(udpFd, "RAK ERR\n", strlen("RAK ERR\n"),0, (struct sockaddr*) &clientaddr, addrlen) == -1)
+						perror("Error sending register message");
+					break;
+				}
+				fclose(fileProcessingTasks);
 
 				//printf("ip: %s port: %s\n", ip, port);
 				fileProcessingTasks = (FILE*)fopen("fileprocessingtasks.txt", "a");
@@ -350,6 +386,7 @@ int main(int argc, char** argv){
 				}
 				//printf("%s\n", buffer);
 				fclose(fileProcessingTasks);
+				sendto(udpFd, "RAK OK\n", strlen("RAK OK\n"),0, (struct sockaddr*) &clientaddr, addrlen);
 			}
 		}
 

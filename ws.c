@@ -164,8 +164,32 @@ int main(int argc, char** argv){
 
 	addrlen = sizeof(serveraddr);
 
-	if(sendto(fd_udp, reg_msg, strlen(reg_msg), 0, (struct sockaddr*) &serveraddr, sizeof(serveraddr)) == -1){
+	if(sendto(fd_udp, reg_msg, strlen(reg_msg), 0, (struct sockaddr*) &serveraddr, addrlen) == -1){
 		perror("Error sending register message");
+		close(fd_udp);
+		close(fd_tcp);
+		close(cs_tcp);
+		return 1;
+	}
+
+	int recvBytes = recvfrom(fd_udp, reg_msg, sizeof(reg_msg), 0, (struct sockaddr*) &serveraddr, &addrlen);  //RAK OK/NOK
+	printf("%s\n", reg_msg);
+	if(recvBytes != 7){
+		printf("ERROR: unexpected cs msg\n");
+		close(fd_udp);
+		close(fd_tcp);
+		close(cs_tcp);
+		return 1;
+	}
+	for(i = 0; i<recvBytes; i++){
+		if(reg_msg[i] != "RAK OK\n"[i])
+			break;
+	}
+	if(i != recvBytes){
+		printf("ERROR: unexpected cs msg\n");
+		close(fd_udp);
+		close(fd_tcp);
+		close(cs_tcp);
 		return 1;
 	}
 
@@ -198,7 +222,7 @@ int main(int argc, char** argv){
 		if(childPid == 0){ //child code
 			while(read(newfd, buffer, sizeof(buffer)-1) == 0);
 			buffer[79] = '\0';
-			printf("BUFF%s\n", buffer);
+			printf("BUFF: %s\n", buffer);
 			int j = 0, charsRead = 0;
 			for(i = 21; buffer[i] != ' '; i++){
 						size[j] = buffer [i];
@@ -206,24 +230,28 @@ int main(int argc, char** argv){
 			}
 			size[j] = '\0';
 			size_int = atoi(size);
-			printf("%d\n", size_int);
+			printf("size data: %d\n buffer size: %d\n", size_int, (int)strlen(buffer));
 			char *fileInBuffer = malloc(sizeof(char)*size_int+1);
 			fileInBuffer[0] = '\0';
 			for(j = ++i; i<strlen(buffer); i++){
 				fileInBuffer[i-j] = buffer[i];
 				charsRead++;
 			}
-			while(charsRead<size_int){
+
+			printf("size data: %d\n charsread: %d\n", size_int, charsRead);
+
+			while(charsRead<size_int-1){
 				int tempChars = read(newfd, buffer_test, sizeof(buffer_test)-1);
 				buffer_test[tempChars] = '\0';
+				printf("FIB: %s | BUFFER %s | tempChars: %d\n", fileInBuffer, buffer_test, tempChars);
 				strcat(fileInBuffer, buffer_test);
-				//printf("FIB: %s | BUFFER %s | tempChars: %d\n", fileInBuffer, buffer_test, tempChars);
 
 				if(tempChars == -1)
 					perror("ERROR: reading rest of file");
 				else{
 					charsRead += tempChars;
 				}
+				//printf("Read Already: %d; Read Now: %d;\n", charsRead, tempChars);
 			}
 
 			printf("%s\n", fileInBuffer);

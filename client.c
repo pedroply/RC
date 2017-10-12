@@ -134,8 +134,8 @@ int main(int argc, char** argv){
 			while(fgets(inbuffer, 1024, (FILE*)inFile) != NULL)
 				strcat(sendReq, inbuffer);
 
-			printf("%s |size: %d\n", sendReq, reqSize);
-		    if(write(fd, sendReq, reqSize) == -1)
+			//printf("%s |size: %d\n", sendReq, reqSize);
+	    if(write(fd, sendReq, reqSize) == -1)
 				printf("Error: write to socket\n");
 
 			while(read(fd, recvReq, reqSize)==0);

@@ -30,7 +30,6 @@ struct filePartitions* fileParts[80] = {NULL};
 
 int main(int argc, char** argv){
 	tcpFd = socket(AF_INET, SOCK_STREAM, 0);
-	wFd = socket(AF_INET, SOCK_STREAM, 0);
   udpFd = socket(AF_INET, SOCK_DGRAM, 0);
 	if(tcpFd == -1)
 		perror("Erro ao criar socket Tcp");
@@ -135,7 +134,7 @@ int main(int argc, char** argv){
 							if(fileInBuffer[i] == '\n')
 								newLineCount++;*/
 
-						fileCount++;
+						fileCount++; //tem de filho mandar ao cs principal se criou novo ficheiro de output
 
 						FILE *fp;
 						char directory[80];
@@ -184,7 +183,7 @@ int main(int argc, char** argv){
 								int sendindChild = fork();
 
 								if(sendindChild == 0){ //codigo sendingChild
-
+									wFd = socket(AF_INET, SOCK_STREAM, 0);
 									if(connect(wFd, (struct sockaddr*) &addr, sizeof(addr)) == -1){
 										perror("ERROR: connecting working server tcp");
 										return 0;
@@ -303,10 +302,11 @@ int main(int argc, char** argv){
 						//i num de sub files
 						//sizeInt num de caracteres sem \0
 						//fileCount numero de files processadas sendo a filecount a atual
+						fileInBuffer[0] = '\0';
 						for(j = 0; j<i; j++){
 							FILE *fp;
 							char directory[80];
-							sprintf(directory, "./output_files/%05d%03d", fileCount, j);
+							sprintf(directory, "./output_files/%05d%03d.txt", fileCount, j);
 							fp = fopen(directory, "r");
 							if(fp == NULL)
 								perror("ERROR: reading one of the output files");
@@ -352,10 +352,63 @@ int main(int argc, char** argv){
 			}
 			else if(FD_ISSET(udpFd,&rfds)){
 				recvfrom(udpFd, buffer, sizeof(buffer), 0, (struct sockaddr*) &clientaddr, &addrlen);  //REG WCT UPP 127.0.1.1 59000
-				int i, j = -1;
+				int i, j = -1, test;
 				char ip[15] = "", tempIp[15] = "";
 				char port[7] = "", tempPort[7] = "";
 				char tempTask[4] = "";
+
+				if(!strncmp(buffer, "UNR ", 4)){ //unregister server
+
+					for(i = strlen(buffer); i>0; i--){
+						if(buffer[i] > 47 && buffer[i] < 58) //numero
+							if(buffer[i-1] == ' ') //espaco
+								if(buffer[i-2] > 64 && buffer[i-2] < 91){ //letra final de uma task
+									j = i;
+									break;
+								}
+					}
+					//printf("caractere actual: %c size buffer: %d i: %d\n", buffer[i], strlen(buffer), i);
+					if(j == -1){
+						printf("mensagem do ws mal formulada\n");
+						if(sendto(udpFd, "RAK NOK\n", (int)strlen("RAK NOK\n"),0, (struct sockaddr*) &clientaddr, addrlen) == -1)
+							perror("Error sending register message");
+						break;
+					}
+					for(j = 0; i<strlen(buffer) && buffer[i] != ' '; i++){
+						ip[j] = buffer[i];
+						j++;
+					}
+					ip[j] = '\0';
+					i++;
+					for(j = 0; i<strlen(buffer) && buffer[i] != ' '; i++){
+						port[j] = buffer[i];
+						j++;
+					}
+					port[j] = '\0';
+
+					//check for repeated ip and port combo      FAZER UNREGISTER
+					fileProcessingTasks = (FILE*)fopen("fileprocessingtasks.txt", "r");
+					test = 0;
+					while(fscanf(fileProcessingTasks, "%s %s %s", tempTask, tempIp, tempPort) > 0){
+						//printf("%s == %s && %d == %d\n", ip, tempIp,  atoi(port), atoi(tempPort));
+						if(!strcmp(ip, tempIp) && atoi(port) == atoi(tempPort)){
+							test = 1;
+							break;
+						}
+					}
+					if(test){ //unregister server
+						printf("servidor ws ja registado\n");
+						if(sendto(udpFd, "RAK ERR\n", (int)strlen("RAK ERR\n"),0, (struct sockaddr*) &clientaddr, addrlen) == -1)
+							perror("Error sending register message");
+						break;
+					}
+					fclose(fileProcessingTasks);
+
+					break;
+				}
+
+
+				//register server and verify message type?
 
 				if(strncmp(buffer, "REG ", 4) != 0){
 					printf("mensagem reg ws desconhecida\n");
@@ -393,13 +446,15 @@ int main(int argc, char** argv){
 
 				//check for repeated ip and port combo
 				fileProcessingTasks = (FILE*)fopen("fileprocessingtasks.txt", "r");
+				int test = 0;
 				while(fscanf(fileProcessingTasks, "%s %s %s", tempTask, tempIp, tempPort) > 0){
-					//printf("%s\n", taskTemp);
-					if(!strcmp(ip, tempIp) && !strcmp(port, tempPort)){
+					//printf("%s == %s && %d == %d\n", ip, tempIp,  atoi(port), atoi(tempPort));
+					if(!strcmp(ip, tempIp) && atoi(port) == atoi(tempPort)){
+						test = 1;
 						break;
 					}
 				}
-				if(fscanf(fileProcessingTasks, "%s %s %s", tempTask, tempIp, tempPort) > 0){
+				if(test){
 					printf("servidor ws ja registado\n");
 					if(sendto(udpFd, "RAK ERR\n", (int)strlen("RAK ERR\n"),0, (struct sockaddr*) &clientaddr, addrlen) == -1)
 						perror("Error sending register message");

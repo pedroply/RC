@@ -268,7 +268,6 @@ int main(int argc, char** argv){
 										}
 										size[i-6] = '\0';
 										sizeInt = atoi(size);
-
 										free(fileInBuffer);
 										charsRead = 0;
 										fileInBuffer = malloc(sizeof(char)*sizeInt+1);
@@ -309,7 +308,43 @@ int main(int argc, char** argv){
 										fclose(fp);
 									}
 									else if(strncmp(buffer, "REP R ", 6) == 0){ //REP R size data
-
+										for(i = 6; buffer[i] != ' '; i++){
+											size[i-6] = buffer[i];
+										}
+										size[i-6] = '\0';
+										sizeInt = atoi(size);
+										free(fileInBuffer);
+										charsRead = 0;
+										fileInBuffer = malloc(sizeof(char)*sizeInt+1);
+										fileInBuffer[0] = '\0';
+										i++;
+										for(j = i; i < strlen(buffer) && charsRead < sizeInt; i++){
+											fileInBuffer[i-j] = buffer[i];
+											charsRead++;
+											printf("%c %d", buffer[i], i);
+										}
+										fileInBuffer[i-j] = '\0';
+										while(charsRead<sizeInt-1){ //esta a mandar menos 1?? mario
+											int tempChars = read(wFd, buffer, sizeof(buffer)-1);
+											buffer[tempChars] = '\0';
+											if(tempChars == -1)
+												perror("ERROR: reading rest of file");
+											else
+												charsRead += tempChars;
+											//printf("Read Already: %d; Read Now: %d;\n", charsRead, tempChars);
+											strcat(fileInBuffer, buffer);
+											printf("buffer: %s\n", buffer);
+										}
+										printf("%s\n", fileInBuffer);
+										FILE *fp;
+										char directory[80];
+										sprintf(directory, "./output_files/%s", fileName);
+										printf("diretorio de file output: %s\n", fileName);
+										fp = fopen(directory, "w+");
+										if(fp == NULL)
+											perror("ERROR: creating output file");
+										fputs(fileInBuffer, fp);
+										fclose(fp);
 									}
 									else{
 										perror("ERROR: mensagem rep ws mal formatada");
@@ -342,41 +377,103 @@ int main(int argc, char** argv){
 						//i num de sub files
 						//sizeInt num de caracteres sem \0
 						//fileCount numero de files processadas sendo a filecount a atual
-						fileInBuffer[0] = '\0';
-						for(j = 0; j<i; j++){
-							FILE *fp;
-							char directory[80];
-							sprintf(directory, "./output_files/%05d%03d.txt", fileCount, j);
-							fp = fopen(directory, "r");
-							if(fp == NULL)
-								perror("ERROR: reading one of the output files");
-							char c, *tempString;
-							tempString = malloc(sizeInt+1);
-							tempString[0] = '\0';
-							int k;
-							for(k = 0; (c = fgetc(fp)) != EOF; k++) {
-				        tempString[k] = c;
-					    }
-							tempString[k] = '\0';
-							strcat(fileInBuffer, tempString);
-							fclose(fp);
+						if ((!strcmp(task, "UPP")) || (!strcmp(task, "LOW"))){
+							fileInBuffer[0] = '\0';
+							for(j = 0; j<i; j++){
+								FILE *fp;
+								char directory[80];
+								sprintf(directory, "./output_files/%05d%03d.txt", fileCount, j);
+								fp = fopen(directory, "r");
+								if(fp == NULL)
+									perror("ERROR: reading one of the output files");
+								char c, *tempString;
+								tempString = malloc(sizeInt+1);
+								tempString[0] = '\0';
+								int k;
+								for(k = 0; (c = fgetc(fp)) != EOF; k++) {
+					        		tempString[k] = c;
+						   		}
+								tempString[k] = '\0';
+								strcat(fileInBuffer, tempString);
+								fclose(fp);
+							}
+
+							//fileInBuffer has the complete processed file
+							//has to responde with result to the user
+
+							//REP R/F size data
+
+							//char response[sizeInt+16+4+2+2] = "REP F ";
+							char *response = malloc(sizeInt+16+4+2+2);
+							response[0] = '\0';
+							strcat(response, "REP F ");
+							strcat(response, size);
+							strcat(response, " ");
+							strcat(response, fileInBuffer);
+							write(newfd, response, strlen(response));
+							close(newfd);
+							return 2;
 						}
-
-						//fileInBuffer has the complete processed file
-						//has to responde with result to the user
-
-						//REP R/F size data
-
-						//char response[sizeInt+16+4+2+2] = "REP F ";
-						char *response = malloc(sizeInt+16+4+2+2);
-						response[0] = '\0';
-						strcat(response, "REP F ");
-						strcat(response, size);
-						strcat(response, " ");
-						strcat(response, fileInBuffer);
-						write(newfd, response, strlen(response));
-						close(newfd);
-						return 2;
+						else if (!strcmp(task, "WCT")){
+							fileInBuffer[0] = '\0';
+							for(j = 0; j<i; j++){
+								FILE *fp;
+								char directory[80];
+								sprintf(directory, "./output_files/%05d%03d.txt", fileCount, j);
+								fp = fopen(directory, "r");
+								if(fp == NULL)
+									perror("ERROR: reading one of the output files");
+								char c, *tempString;
+								tempString = malloc(sizeInt+1);
+								tempString[0] = '\0';
+								int k;
+								for(k = 0; (c = fgetc(fp)) != EOF; k++) {
+					        		tempString[k] = c;
+						    	}
+								tempString[k] = '\0';
+								strcat(fileInBuffer, tempString);
+								fclose(fp);
+							}
+							char *response = malloc(sizeInt+16+4+2+2);
+							response[0] = '\0';
+							strcat(response, "REP R ");
+							strcat(response, size);
+							strcat(response, " ");
+							strcat(response, fileInBuffer);
+							write(newfd, response, strlen(response));
+							close(newfd);
+							return 2;
+						}
+						else if (!strcmp(task, "FLW")){
+							fileInBuffer[0] = '\0';
+							for(j = 0; j<i; j++){
+								FILE *fp;
+								char directory[80];
+								sprintf(directory, "./output_files/%05d%03d.txt", fileCount, j);
+								fp = fopen(directory, "r");
+								if(fp == NULL)
+									perror("ERROR: reading one of the output files");
+								char c, *tempString;
+								tempString = malloc(sizeInt+1);
+								tempString[0] = '\0';
+								int k;
+								for(k = 0; (c = fgetc(fp)) != EOF; k++) {
+					        		tempString[k] = c;
+						    	}
+								tempString[k] = '\0';
+								strcat(fileInBuffer, tempString);
+								fclose(fp);
+							}
+							char *response = malloc(sizeInt+16+4+2+2);
+							response[0] = '\0';
+							strcat(response, "REP R ");
+							strcat(response, size);
+							strcat(response, " ");
+							strcat(response, fileInBuffer);
+							write(newfd, response, strlen(response));
+							close(newfd);
+							return 2;
+						}
 					}
 					else
 						write(newfd, "REQ ERR\n", sizeof("REQ ERR\n"));

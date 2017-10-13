@@ -10,8 +10,10 @@
 #include <stdlib.h>
 #include <ctype.h>
 #include <sys/wait.h>
+#include <math.h>
 
 int fd_udp,fd_tcp,cs_tcp, newfd, last_i;
+char size_string[16], size_WCT[16], digit_WCT[16];
 struct hostent *hostptr;
 int addrlen, ws_port = 59000, PORT = 58022;
 char buffer[80], buffer_test[80];
@@ -77,51 +79,58 @@ void catch_alarm (int sig)
 }
 
 int doWordCount(char* data, int charsRead){
-	/*FILE *fp1;
-	char a;
-	int count = 0;
-	fp1 = fopen(fileName, "r");
-	while (a != EOF){
-		a = fgetc(fp1);
-		if (a == ' '){
-			count++;
-		}
-	}
-	count++;
-	fclose(fp1);
-	printf("%d\n", count);
-	return count;*/
-	int i, count = 0;
+	int count = 0, temp_count, control = 0;
+	int nDigits = 0, j, i;
 	for (i = 0; i < charsRead; i++){
-		if (data[i] == ' '){
-			count++;
+		while(i < charsRead && data[i] != '\0' && data[i] != '\n' && data[i] != ' ' && ((97 <= (int)data[i] && (int)data[i] <= 122) || (65 <= (int)data[i] && (int)data[i] <= 90))){
+				control = 1;
+				i++;
 		}
+		if (control){
+			count++;
+			control = 0;
+		}
+
 	}
-	count++;
+	temp_count = count;
+	while (temp_count > 1){
+		temp_count = temp_count / 10;
+		nDigits++;
+	}
+	//nDigits = floor(log10(abs(count))) + 1;
+	sprintf(digit_WCT, "%d", nDigits);
+	printf("COUNT: %d, WORD: %s\n", count, digit_WCT);
 	return count;
 }
 
-char* findLongestWord(char* fileName, char* data){ //prob wrong af
-	FILE *fp1;
-	char* a = (char*) malloc(sizeof(data));
-	fp1 = fopen(fileName, "r");
-	char* longestWord;
-	while (fgets(a, sizeof(data), fp1)){
-		a[strlen(a)-1] = 0;
-		char* word;
-		int maxLenght = 0;
-		longestWord = (char*) calloc(40, sizeof(char));
-		word = strtok(a, " ");
-		while(word != NULL){
-			if (strlen(word) > maxLenght){
-				maxLenght = strlen(word);
-				strcpy(longestWord, word);
-			}
-			word = strtok(a, " ");
+char* findLongestWord(char* data, int charsRead){
+	printf("OLa\n");
+	int size, i, j=0, first_entry = 0;
+	char* word = malloc(sizeof(char*) * charsRead);
+	word[0] = '\0';
+	char* longestWord = malloc(sizeof(char*) * charsRead);
+	longestWord[0] = '\0';
+	for (i = 0; i < charsRead; i++){
+		while(i < charsRead && data[i] != '\0' && data[i] != '\n' && data[i] != ' ' && ((97 <= (int)data[i] && (int)data[i] <= 122) || (65 <= (int)data[i] && (int)data[i] <= 90))){
+				word[j++] = data[i++];
 		}
+		if (j != 0){
+			word[j] = '\0';
+			if (!first_entry){
+				first_entry = 1;
+				strcpy(longestWord, word);
+				size = strlen(longestWord);
+			}
+			if (strlen(word) > strlen(longestWord)){
+				strcpy(longestWord, word);
+				size = strlen(longestWord);
+			}
+			j = 0;
+		}
+
 	}
-	fclose(fp1);
-	printf("%s\n", longestWord);
+	sprintf(size_string, "%d", size);
+	printf("SIZE: %s, WORD: %s\n", size_string, longestWord);
 	return longestWord;
 }
 
@@ -134,16 +143,6 @@ char* convertUpper(char* data, int charsRead){
 }
 
 char* convertLower(char* data, int charsRead){
-	/*FILE *fp1;
-	char a;
-	fp1 = fopen(fileName, "r");
-	while (a != EOF){
-		a = fgetc(fp1);
-		a = tolower(a);
-		printf("%c", a);
-	}
-	printf("\n");
-	fclose(fp1);*/
 	int i;
 	for (i = 0; i < charsRead; i++){
 		data[i] = tolower(data[i]);
@@ -305,7 +304,7 @@ int main(int argc, char** argv){
 				//printf("Read Already: %d; Read Now: %d;\n", charsRead, tempChars);
 			}
 
-			printf("%s\n", fileInBuffer);
+			//printf("%s\n", fileInBuffer);
 
 			if(!strncmp(buffer, "WRQ ", 4)){
 				for(i = 4; i < 7; i++)
@@ -318,22 +317,26 @@ int main(int argc, char** argv){
 				printf("REQ: %s | fileName: %s\n", req, fileName);
 				if(!strcmp(req, "WCT")){
 					int wrd_count = 0;
-					rep_msg = (char*) malloc(sizeof(buffer));
+					rep_msg = malloc(sizeof(char*) * size_int + strlen(size) + 8);
 					rep_msg[0] = '\0';
-					wrd_count = doWordCount(data, charsRead);
+					wrd_count = doWordCount(fileInBuffer, charsRead);
+					sprintf(size_WCT, "%d", wrd_count);
 					strcat(rep_msg, "REP R ");
-					//strcat(rep_msg, strlen(wrd_count));
+					strcat(rep_msg, digit_WCT);
 					strcat(rep_msg, " ");
-					strcat(rep_msg, data);
+					strcat(rep_msg, size_WCT);
 					printf("%s\n", rep_msg);
 				}
 				else if(!strcmp(req, "FLW")){
-					/*char* longest_word;
-					rep_msg = (char*) malloc(sizeof(buffer));
-					longest_word = findLongestWord(fileName, data);
+					char* longest_word;
+					rep_msg = malloc(sizeof(char*) * size_int + strlen(size) + 8);
+					rep_msg[0] = '\0';
+					longest_word = findLongestWord(fileInBuffer, charsRead);
 					strcat(rep_msg, "REP R ");
-					strcat(rep_msg, size);
-					strcat(rep_msg, data);*/
+					strcat(rep_msg, size_string);
+					strcat(rep_msg, " ");
+					strcat(rep_msg, longest_word);
+					printf("hey :: %s\n size: %d\n", rep_msg, (int)strlen(rep_msg));
 					//process reply message with result
 				}
 				else if(!strcmp(req, "UPP")){

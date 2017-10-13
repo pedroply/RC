@@ -138,6 +138,7 @@ int main(int argc, char** argv){
 			rewind(inFile);
 			while(fgets(inbuffer, 1024, (FILE*)inFile) != NULL)
 				strcat(sendReq, inbuffer);
+			fclose(inFile);
 
 			//printf("%s |size: %d\n", sendReq, reqSize);
 	    if(write(fd, sendReq, reqSize) == -1)
@@ -149,7 +150,6 @@ int main(int argc, char** argv){
 				//printf("Error: read from socket\n");
 			printf("got: %s\nend\n", recvReq);
 
-			fclose(inFile);
 		}
 		else{
 			printf("\tUnkown Command: %s\n", msg);

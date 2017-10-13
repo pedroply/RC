@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>
+#include <sys/wait.h>
 
 int fd_udp,fd_tcp,cs_tcp, newfd, last_i;
 struct hostent *hostptr;
@@ -16,16 +17,65 @@ int addrlen, ws_port = 59000, PORT = 58022;
 char buffer[80], buffer_test[80];
 char req[4] = "";
 char fileName[40] = "";
-char data[40] =""; //PLACEHOLDER
-
-void termHandler(int sig)
-{
-  //send unreg msg to ws them return 0;
-}
+char data[40] = "", name[128]; //PLACEHOLDER
 
 struct sockaddr_in serveraddr, serveraddr_tcp, clientaddr;
 struct in_addr *a;
 struct hostent *h;
+
+void termHandler(int sig)
+{
+  //send unreg msg to ws them return 0;
+	char unregMsg[80] = "";
+	int i;
+	alarm(2);
+
+	/*strcat(unreg_msg, "UNR ");
+	strcat(unreg_msg, inet_ntoa(*a));
+	strcat(unreg_msg, " ");
+	strcat(unreg_msg, ws_port_string);
+	strcat(unreg_msg, "\n");
+	printf("%s", unreg_msg);*/
+
+	sprintf(unregMsg, "UNR %s %d\n", inet_ntoa(*a), ws_port); //UNR IPWS portWS
+	printf("unregestering and terminating: %s\n", unregMsg);
+	if(sendto(fd_udp, unregMsg, strlen(unregMsg), 0, (struct sockaddr*) &serveraddr, addrlen) == -1){
+		perror("Error sending register message");
+		close(fd_udp);
+		close(fd_tcp);
+		close(cs_tcp);
+		exit(1);
+	}
+
+	unregMsg[0] = '\0';
+
+	int recvBytes = recvfrom(fd_udp, unregMsg, sizeof(unregMsg), 0, (struct sockaddr*) &serveraddr, &addrlen);  //RAK OK/NOK
+	printf("%s\n", unregMsg);
+	if(recvBytes != 7){
+		printf("ERROR: unexpected cs msg\n");
+		close(fd_udp);
+		close(fd_tcp);
+		close(cs_tcp);
+		exit(1);
+	}
+	for(i = 0; i<recvBytes && i<80; i++){
+		if(unregMsg[i] != "UAK OK\n"[i])
+			break;
+	}
+	if(i != recvBytes){
+		printf("ERROR: unexpected cs msg\n");
+	}
+	close(fd_udp);
+	close(fd_tcp);
+	close(cs_tcp);
+	exit(1);
+
+}
+
+void catch_alarm (int sig)
+{
+  kill(getpid(), SIGKILL);
+}
 
 int doWordCount(char* data, int charsRead){
 	/*FILE *fp1;
@@ -111,10 +161,12 @@ int main(int argc, char** argv){
 	if(fd_tcp == -1)
 		perror("Erro ao criar socket TCP");
 
-	signal(SIGTERM, childHandler);
+	signal(SIGTERM, termHandler);
+	signal(SIGINT, termHandler);
+	signal (SIGALRM, catch_alarm);
 
 	char msg[80] = "";
-	char hostName[128], name[128], ip_ws[20];
+	char hostName[128], ip_ws[20];
 	char ws_port_string[1];
 	int argv_size = (argc - 1) * 3 + (argc - 1); //alocacao de espaco mal, antes so considerava os PTCs, ta a alocar mais do que precisa
 	char* reg_msg = (char*)malloc(21 + argv_size);
@@ -150,13 +202,6 @@ int main(int argc, char** argv){
 	strcat(reg_msg, ws_port_string);
 	strcat(reg_msg, "\n");
 	printf("%s", reg_msg);
-
-	strcat(unreg_msg, "UNR ");
-	strcat(unreg_msg, inet_ntoa(*a));
-	strcat(unreg_msg, " ");
-	strcat(unreg_msg, ws_port_string);
-	strcat(unreg_msg, "\n");
-	printf("%s", unreg_msg);
 
 	if(gethostname(hostName, 128)==-1)
 		printf("erro: gethostname\n");
@@ -229,7 +274,7 @@ int main(int argc, char** argv){
 		if(childPid == 0){ //child code
 			while(read(newfd, buffer, sizeof(buffer)-1) == 0);
 			buffer[79] = '\0';
-			printf("BUFF: %s\n", buffer);
+			//printf("BUFF: %s\n", buffer);
 			int j = 0, charsRead = 0;
 			for(i = 21; buffer[i] != ' '; i++){
 						size[j] = buffer [i];
@@ -237,7 +282,7 @@ int main(int argc, char** argv){
 			}
 			size[j] = '\0';
 			size_int = atoi(size);
-			printf("size data: %d\n buffer size: %d\n", size_int, (int)strlen(buffer));
+			//printf("size data: %d\n buffer size: %d\n", size_int, (int)strlen(buffer));
 			char *fileInBuffer = malloc(sizeof(char)*size_int+1);
 			fileInBuffer[0] = '\0';
 			for(j = ++i; i<strlen(buffer); i++){
@@ -245,12 +290,12 @@ int main(int argc, char** argv){
 				charsRead++;
 			}
 
-			printf("size data: %d\n charsread: %d\n", size_int, charsRead);
+			//printf("size data: %d\n charsread: %d\n", size_int, charsRead);
 
 			while(charsRead<size_int-1){
 				int tempChars = read(newfd, buffer_test, sizeof(buffer_test)-1);
 				buffer_test[tempChars] = '\0';
-				printf("FIB: %s | BUFFER %s | tempChars: %d\n", fileInBuffer, buffer_test, tempChars);
+				//printf("FIB: %s | BUFFER %s | tempChars: %d\n", fileInBuffer, buffer_test, tempChars);
 				strcat(fileInBuffer, buffer_test);
 
 				if(tempChars == -1)

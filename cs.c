@@ -359,12 +359,15 @@ int main(int argc, char** argv){
 
 			}
 			else if(FD_ISSET(udpFd,&rfds)){
-				recvfrom(udpFd, buffer, sizeof(buffer), 0, (struct sockaddr*) &clientaddr, &addrlen);  //REG WCT UPP 127.0.1.1 59000
+
+				int readBytes = recvfrom(udpFd, buffer, sizeof(buffer), 0, (struct sockaddr*) &clientaddr, &addrlen);  //REG WCT UPP 127.0.1.1 59000
+				buffer[readBytes] = '\0';
 				int i, j = -1, test;
 				char ip[15] = "", tempIp[15] = "";
 				char port[7] = "", tempPort[7] = "";
 				char tempTask[4] = "";
 
+				printf("%s\n", buffer);
 				if(!strncmp(buffer, "UNR ", 4)){ //unregister server
 
 					for(i = strlen(buffer); i>0; i--){

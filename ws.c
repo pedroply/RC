@@ -93,7 +93,7 @@ int doWordCount(char* data, int charsRead){
 
 	}
 	temp_count = count;
-	while (temp_count > 1){
+	while (temp_count >= 1){
 		temp_count = temp_count / 10;
 		nDigits++;
 	}
@@ -104,7 +104,7 @@ int doWordCount(char* data, int charsRead){
 }
 
 char* findLongestWord(char* data, int charsRead){
-	printf("OLa\n");
+	//printf("OLa\n");
 	int size, i, j=0, first_entry = 0;
 	char* word = malloc(sizeof(char*) * charsRead);
 	word[0] = '\0';

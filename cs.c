@@ -23,10 +23,9 @@ FILE *fileProcessingTasks;
 
 void childHandler(int sig)
 {
-  pid_t pid;
 	int status;
   //pid = wait(&status);
-  pid =  waitpid(-1, &status, WUNTRACED);
+  waitpid(-1, &status, WUNTRACED);
 	WEXITSTATUS(status);
 	printf("-----status child: %d\n", status);
 	if(status == 512)
@@ -59,8 +58,6 @@ int main(int argc, char** argv){
 	if(mkdir("./output_files", 0777) == -1)
 	 	perror("ERROR: creating output_files directory"); //n esta a criar diretorio
 
-	char msg[80] = "hi from server";
-
 	memset((void*) &serveraddr, (int)'\0', sizeof(serveraddr));
 	serveraddr.sin_family = AF_INET;
 	serveraddr.sin_addr.s_addr = htonl(INADDR_ANY);
@@ -91,7 +88,7 @@ int main(int argc, char** argv){
 
 		for(;counter; counter--){
 			if(FD_ISSET(tcpFd,&rfds)){
-				newfd = accept(tcpFd, (struct sockaddr*) &clientaddr, &addrlen);
+				newfd = accept(tcpFd, (struct sockaddr*) &clientaddr, (socklen_t *)&addrlen);
 				if(newfd == -1){
 					perror("ERROR: accept");
 				}
@@ -143,7 +140,7 @@ int main(int argc, char** argv){
 						char taskTemp[4];
 						char ipTemp[15];
 						char portTemp[6];
-						int i, j, charsRead = 0, sizeInt, serversSuported = 0, newLineCount = 0;
+						int i, j, charsRead = 0, sizeInt, serversSuported = 0;
 						for(i = 4; i<7; i++){
 							task[i-4] = buffer[i];
 						}
@@ -450,9 +447,9 @@ int main(int argc, char** argv){
 							char *response = malloc(sizeInt+16+4+2+2);
 							response[0] = '\0';
 							strcat(response, "REP R ");
-							strcat(response, size_WCT);
+							strcat(response, size);
 							strcat(response, " ");
-							strcat(response, fileInBuffer);
+							strcat(response, size_WCT);
 							write(newfd, response, strlen(response));
 							close(newfd);
 							return 2;
@@ -489,7 +486,7 @@ int main(int argc, char** argv){
 						}
 					}
 					else
-						write(newfd, "REQ ERR\n", sizeof("REQ ERR\n"));
+						write(newfd, "ERR\n", sizeof("ERR\n"));
 					close(newfd);
 					return 0;
 				}
@@ -503,7 +500,7 @@ int main(int argc, char** argv){
 			}
 			else if(FD_ISSET(udpFd,&rfds)){
 
-				int readBytes = recvfrom(udpFd, buffer, sizeof(buffer), 0, (struct sockaddr*) &clientaddr, &addrlen);  //REG WCT UPP 127.0.1.1 59000
+				int readBytes = recvfrom(udpFd, buffer, sizeof(buffer), 0, (struct sockaddr*) &clientaddr, (socklen_t *)&addrlen);  //REG WCT UPP 127.0.1.1 59000
 				buffer[readBytes] = '\0';
 				int i, j = -1, test, charsInFile = 0;
 				char ip[15] = "", tempIp[15] = "";

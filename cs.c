@@ -416,6 +416,13 @@ int main(int argc, char** argv){
 						}
 						else if (!strcmp(task, "WCT")){
 							fileInBuffer[0] = '\0';
+							char* processed_responses[serversSuported];
+							char size_WCT[16];
+							int l = 0, count = 0;
+							for (i = 0; i < serversSuported; i++){
+								processed_responses[i] = malloc(16);
+								processed_responses[i][0] = '\0';
+							}
 							for(j = 0; j<i; j++){
 								FILE *fp;
 								char directory[80];
@@ -429,15 +436,21 @@ int main(int argc, char** argv){
 								int k;
 								for(k = 0; (c = fgetc(fp)) != EOF; k++) {
 					        		tempString[k] = c;
+					        		processed_responses[l][k] = tempString[k];
 						    	}
 								tempString[k] = '\0';
-								strcat(fileInBuffer, tempString);
+								processed_responses[l][k] = '\0';
+								l++;
 								fclose(fp);
 							}
+							for (i = 0; i < l; i++){
+								count += atoi(processed_responses[i]);
+							}
+							sprintf(size_WCT, "%d", count);
 							char *response = malloc(sizeInt+16+4+2+2);
 							response[0] = '\0';
 							strcat(response, "REP R ");
-							strcat(response, size);
+							strcat(response, size_WCT);
 							strcat(response, " ");
 							strcat(response, fileInBuffer);
 							write(newfd, response, strlen(response));

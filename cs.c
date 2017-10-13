@@ -132,8 +132,10 @@ int main(int argc, char** argv){
 							strcat(sendLst, supportedTasks[i]);
 						}
 						strcat(sendLst, "\n");
-
-						write(newfd, sendLst, strlen(sendLst));
+						if(supportedTasksCount>0)
+							write(newfd, sendLst, strlen(sendLst));
+						else
+							write(newfd, "FPT EOF\n", strlen("FPT EOF\n"));
 					}
 					else if(strncmp(buffer, "REQ ", 4) == 0){ //REQ PTC size data
 						char task[4] = "";

@@ -58,12 +58,17 @@ int main(int argc, char** argv){
 	}
 
 	while(1){
+		int charsRead = 0;
 		printf(": ");
 		fgets(msg, 80, stdin);
 		if(!strcmp(msg, "list\n")){
 			if(write(fd, "LST\n", 5) == -1)
 				printf("Error: write to socket");
-			while(read(fd, buffer, sizeof(buffer)) == 0);
+			while((charsRead = read(fd, buffer, sizeof(buffer))) == 0);
+			buffer[charsRead] = '\0';
+			if(!strcmp("FPT EOF\n", buffer)){
+				printf("\tNo FPTs available!\n");
+			}
 			int i;
 			char numFTP[3] = " ";
 			for(i = 4; i<strlen(buffer) && buffer[i]!=' '; i++)

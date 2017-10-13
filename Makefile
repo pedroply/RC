@@ -15,3 +15,6 @@ ws.o: ws.c
 
 cs.o: cs.c
 	gcc -Wall -g -pedantic -c cs.c
+
+clean:
+	rm cs.o ws.o client.o

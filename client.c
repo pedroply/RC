@@ -143,9 +143,11 @@ int main(int argc, char** argv){
 	    if(write(fd, sendReq, reqSize) == -1)
 				printf("Error: write to socket\n");
 
-			while(read(fd, recvReq, reqSize)==0);
+			int readBytes = 0;
+			while((readBytes = read(fd, recvReq, reqSize)) == 0);
+			recvReq[readBytes] = '\0';
 				//printf("Error: read from socket\n");
-			printf("got : %s\nend\n", recvReq);
+			printf("got: %s\nend\n", recvReq);
 
 			fclose(inFile);
 		}

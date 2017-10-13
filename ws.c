@@ -49,7 +49,7 @@ void termHandler(int sig)
 		exit(1);
 	}
 
-	int recvBytes = recvfrom(fd_udp, unregMsg, sizeof(unregMsg), 0, (struct sockaddr*) &serveraddr, &addrlen);  //RAK OK/NOK
+	int recvBytes = recvfrom(fd_udp, unregMsg, sizeof(unregMsg), 0, (struct sockaddr*) &serveraddr, (socklen_t *)&addrlen);  //RAK OK/NOK
 	unregMsg[recvBytes] = '\0';
 	printf("%s\n", unregMsg);
 	if(recvBytes != 7){
@@ -80,7 +80,7 @@ void catch_alarm (int sig)
 
 int doWordCount(char* data, int charsRead){
 	int count = 0, temp_count, control = 0;
-	int nDigits = 0, j, i;
+	int nDigits = 0, i;
 	for (i = 0; i < charsRead; i++){
 		while(i < charsRead && data[i] != '\0' && data[i] != '\n' && data[i] != ' ' && ((97 <= (int)data[i] && (int)data[i] <= 122) || (65 <= (int)data[i] && (int)data[i] <= 90))){
 				control = 1;
@@ -163,12 +163,10 @@ int main(int argc, char** argv){
 	signal(SIGINT, termHandler);
 	signal (SIGALRM, catch_alarm);
 
-	char msg[80] = "";
-	char hostName[128], ip_ws[20];
+	char hostName[128];
 	char ws_port_string[1];
 	int argv_size = (argc - 1) * 3 + (argc - 1); //alocacao de espaco mal, antes so considerava os PTCs, ta a alocar mais do que precisa
 	char* reg_msg = (char*)malloc(21 + argv_size);
-	char* unreg_msg = (char*)malloc(25);
 	char size[16];
 	int size_int;
 	strcat(reg_msg, "REG ");
@@ -222,7 +220,7 @@ int main(int argc, char** argv){
 		return 1;
 	}
 
-	int recvBytes = recvfrom(fd_udp, reg_msg, sizeof(reg_msg), 0, (struct sockaddr*) &serveraddr, &addrlen);  //RAK OK/NOK
+	int recvBytes = recvfrom(fd_udp, reg_msg, sizeof(reg_msg), 0, (struct sockaddr*) &serveraddr, (socklen_t *)&addrlen);  //RAK OK/NOK
 	printf("%s\n", reg_msg);
 	if(recvBytes != 7){
 		printf("ERROR: unexpected cs msg\n");
@@ -262,7 +260,7 @@ int main(int argc, char** argv){
 
 	while(1){
 		addrlen = sizeof(clientaddr);
-		newfd = accept(fd_tcp, (struct sockaddr*) &clientaddr, &addrlen);
+		newfd = accept(fd_tcp, (struct sockaddr*) &clientaddr, (socklen_t *)&addrlen);
 		if (newfd == -1){
 			perror("Error accept");
 		}
@@ -378,9 +376,11 @@ int main(int argc, char** argv){
 			else{ // parent code
 				close(newfd);
 			}
+			close(newfd);
+			return 0;
 		}
 		else{
-			// write ("WRP ERR");
+			//write (newfd, "WRP ERR");
 		}
 	}
 	close(fd_tcp);

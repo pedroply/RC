@@ -53,7 +53,7 @@ int main(int argc, char** argv){
 	addr.sin_port = htons((u_short)PORT);
 
 	if(connect(fd, (struct sockaddr*) &addr, sizeof(addr)) == -1){
-		printf("erro: connect");
+		perror("erro: connect");
 		return 0;
 	}
 
@@ -141,7 +141,7 @@ int main(int argc, char** argv){
 
 			//printf("%s |size: %d\n", sendReq, reqSize);
 	    if(write(fd, sendReq, reqSize) == -1)
-				printf("Error: write to socket\n");
+				perror("Error: write to socket\n");
 
 			int readBytes = 0;
 			while((readBytes = read(fd, recvReq, reqSize)) == 0);
@@ -162,7 +162,6 @@ int main(int argc, char** argv){
 
 		if(connect(fd, (struct sockaddr*) &addr, sizeof(addr)) == -1){
 			perror("ERROR");
-			printf("erro: connect");
 			return 0;
 		}
 		/*if (!fgets(msg, 80, stdin))

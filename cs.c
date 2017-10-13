@@ -27,7 +27,7 @@ void childHandler(int sig)
   //pid = wait(&status);
   waitpid(-1, &status, WUNTRACED);
 	WEXITSTATUS(status);
-	printf("-----status child: %d\n", status);
+	//printf("-----status child: %d\n", status);
 	if(status == 512)
 		fileCount++;
 }
@@ -42,7 +42,21 @@ int main(int argc, char** argv){
 	if(wFd == -1)
 		perror("Erro ao criar socket Tcp Working Servers");
 
-	signal(SIGCHLD, childHandler);
+	struct sigaction sa;
+	// Setup the sighub handler
+  sa.sa_handler = &childHandler;
+
+  // Restart the system call, if at all possible
+  sa.sa_flags = SA_RESTART;
+
+  // Block every signal during the handler
+	sigfillset(&sa.sa_mask);
+
+	//signal(SIGCHLD, childHandler);
+	// Intercept SIGHUP and SIGINT
+  if (sigaction(SIGHUP, &sa, NULL) == -1) {
+    perror("Error: cannot handle SIGHUP"); // Should not happen
+	}
 
 	for (maxfd = 1; maxfd < argc ; maxfd++){
 		if (!strcmp(argv[maxfd], "-p")){
@@ -167,9 +181,6 @@ int main(int argc, char** argv){
 							//printf("Read Already: %d; Read Now: %d;\n", charsRead, tempChars);
 							strcat(fileInBuffer, buffer);
 						}
-						/*for(i = 0; strlen(fileInBuffer); i++)
-							if(fileInBuffer[i] == '\n')
-								newLineCount++;*/
 
 						fileCount++; //tem de filho mandar ao cs principal se criou novo ficheiro de output
 
@@ -193,7 +204,12 @@ int main(int argc, char** argv){
 							}
 						}
 						rewind(fileProcessingTasks);
-						printf("Suported Servers: %d\n", serversSuported);
+						//printf("Suported Servers: %d\n", serversSuported);
+						if(serversSuported <= 0){
+							write(newfd, "REP EOF\n", strlen("REP EOF\n"));
+							close(newfd);
+							break;
+						}
 
 						int tempSize = sizeInt/serversSuported;
 						int start = 0;
@@ -229,26 +245,16 @@ int main(int argc, char** argv){
 									char fileName[13] = "";
 									sprintf(fileName, "%05d%03d.txt", fileCount, i);
 									sprintf(commandHead, "WRQ %s %05d%03d.txt %d ", task, fileCount, i, tempSize);  //WRQ PTC filename size data
-									printf("sending: %s\n", commandHead);
+									//printf("sending: %s\n", commandHead);
 									if(write(wFd, commandHead, strlen(commandHead)) == -1) // enviar head do comando
 										perror("ERROR: write to working server");
 
-									printf("sendind: %s\nstart: %d, tempsize: %d\n", fileInBuffer, start, tempSize);
-									write(1, fileInBuffer+start, tempSize);
-									printf("\n");
+									//printf("sendind: %s\nstart: %d, tempsize: %d\n", fileInBuffer, start, tempSize);
+									//write(1, fileInBuffer+start, tempSize);
+									//printf("\n");
 
 									if(write(wFd, fileInBuffer+start, tempSize) == -1) // enviar file
 										perror("ERROR: write to working server");
-
-									//falta ficar a espera de receber e guardar no ficheiro
-									/*FD_ZERO(&rfds); //n e preciso devido ao while acho eu
-									FD_SET(wFd,&rfds);
-									maxfd = tcpFd;
-									counter = select(maxfd+1,&rfds,(fd_set*)NULL,(fd_set*)NULL,(struct timeval *)NULL);
-									if(counter<=0)
-										perror("ERROR: select");*/
-
-									printf("waiting for response\n");
 
 									i = read(wFd, buffer, sizeof(buffer)-1);
 									while(i == 0){
@@ -275,7 +281,7 @@ int main(int argc, char** argv){
 										for(j = i; i < strlen(buffer) && charsRead < sizeInt; i++){
 											fileInBuffer[i-j] = buffer[i];
 											charsRead++;
-											printf("%c %d", buffer[i], i);
+											//printf("%c %d", buffer[i], i);
 										}
 										fileInBuffer[i-j] = '\0';
 										//printf("to while falta ler%d\n", sizeInt-charsRead);
@@ -289,15 +295,15 @@ int main(int argc, char** argv){
 												charsRead += tempChars;
 											//printf("Read Already: %d; Read Now: %d;\n", charsRead, tempChars);
 											strcat(fileInBuffer, buffer);
-											printf("buffer: %s\n", buffer);
+											//printf("buffer: %s\n", buffer);
 										}
 
-										printf("%s\n", fileInBuffer);
+										//printf("%s\n", fileInBuffer);
 
 										FILE *fp;
 										char directory[80];
 										sprintf(directory, "./output_files/%s", fileName);
-										printf("diretorio de file output: %s\n", fileName);
+										//printf("diretorio de file output: %s\n", fileName);
 										fp = fopen(directory, "w+");
 										if(fp == NULL)
 											perror("ERROR: creating output file");
@@ -318,7 +324,7 @@ int main(int argc, char** argv){
 										for(j = i; i < strlen(buffer) && charsRead < sizeInt; i++){
 											fileInBuffer[i-j] = buffer[i];
 											charsRead++;
-											printf("%c %d", buffer[i], i);
+											//printf("%c %d", buffer[i], i);
 										}
 										fileInBuffer[i-j] = '\0';
 										while(charsRead<sizeInt-1){ //esta a mandar menos 1?? mario
@@ -330,13 +336,13 @@ int main(int argc, char** argv){
 												charsRead += tempChars;
 											//printf("Read Already: %d; Read Now: %d;\n", charsRead, tempChars);
 											strcat(fileInBuffer, buffer);
-											printf("buffer: %s\n", buffer);
+											//printf("buffer: %s\n", buffer);
 										}
-										printf("%s\n", fileInBuffer);
+										//printf("%s\n", fileInBuffer);
 										FILE *fp;
 										char directory[80];
 										sprintf(directory, "./output_files/%s", fileName);
-										printf("diretorio de file output: %s\n", fileName);
+										//printf("diretorio de file output: %s\n", fileName);
 										fp = fopen(directory, "w+");
 										if(fp == NULL)
 											perror("ERROR: creating output file");
@@ -369,7 +375,7 @@ int main(int argc, char** argv){
 
 						waitpid(-1, NULL, 0);
 
-						printf("All files processed should be in output_files\n");
+						//printf("All files processed should be in output_files\n");
 
 						//i num de sub files
 						//sizeInt num de caracteres sem \0
@@ -496,7 +502,7 @@ int main(int argc, char** argv){
 							}
 							strcpy(longest, processed_responses[0]);
 							for (i = 0; i < l; i++){
-								word = processed_responses[0];
+								word = processed_responses[i];
 								if (strlen(word) > strlen(longest)){
 									longest = word;
 								}
@@ -537,7 +543,7 @@ int main(int argc, char** argv){
 				char port[7] = "", tempPort[7] = "";
 				char tempTask[4] = "", nextChar, *newFileServer;
 
-				printf("%s\n", buffer);
+				//printf("%s\n", buffer);
 				if(!strncmp(buffer, "UNR ", 4)){ //unregister server
 
 					for(i = strlen(buffer); i>0; i--){
@@ -550,7 +556,7 @@ int main(int argc, char** argv){
 					}
 					//printf("caractere actual: %c size buffer: %d i: %d\n", buffer[i], strlen(buffer), i);
 					if(j == -1){
-						printf("mensagem do ws mal formulada\n");
+						//printf("mensagem do ws mal formulada\n");
 						if(sendto(udpFd, "UAK NOK\n", (int)strlen("UAK NOK\n"),0, (struct sockaddr*) &clientaddr, addrlen) == -1)
 							perror("Error sending unregister nok message");
 						break;
@@ -610,7 +616,7 @@ int main(int argc, char** argv){
 				//register server and verify message type?
 
 				if(strncmp(buffer, "REG ", 4) != 0){
-					printf("mensagem reg ws desconhecida\n");
+					//printf("mensagem reg ws desconhecida\n");
 					if(sendto(udpFd, "RAK NOK\n", (int)strlen("RAK NOK\n"),0, (struct sockaddr*) &clientaddr, addrlen) == -1)
 						perror("Error sending register message");
 					break;
@@ -626,7 +632,7 @@ int main(int argc, char** argv){
 				}
 				//printf("caractere actual: %c size buffer: %d i: %d\n", buffer[i], strlen(buffer), i);
 				if(j == -1){
-					printf("mensagem do ws mal formulada\n");
+					//printf("mensagem do ws mal formulada\n");
 					if(sendto(udpFd, "RAK NOK\n", (int)strlen("RAK NOK\n"),0, (struct sockaddr*) &clientaddr, addrlen) == -1)
 						perror("Error sending register message");
 					break;
@@ -654,7 +660,7 @@ int main(int argc, char** argv){
 					}
 				}
 				if(test){
-					printf("servidor ws ja registado\n");
+					//printf("servidor ws ja registado\n");
 					if(sendto(udpFd, "RAK ERR\n", (int)strlen("RAK ERR\n"),0, (struct sockaddr*) &clientaddr, addrlen) == -1)
 						perror("Error sending register message");
 					break;
@@ -673,18 +679,6 @@ int main(int argc, char** argv){
 						}
 						task[3] = '\0';
 
-						/*int a;
-						int b = 0;
-						for(a = 0; a<99; a++){
-							if(supportedTasks[a] != NULL && !strcmp(supportedTasks[a], task)){
-								b = 1
-							}
-						}
-						for(a = 0; supportedTasks[a] != NULL; a++);
-						if(!b)
-							strcpy(supportedTasks[a], task);*/
-
-						//printf("%s %s %s\n", task, ip, port);
 						fprintf(fileProcessingTasks, "%s %s %s", task, ip, port);
 					}
 				}
@@ -693,21 +687,6 @@ int main(int argc, char** argv){
 				sendto(udpFd, "RAK OK\n", strlen("RAK OK\n"),0, (struct sockaddr*) &clientaddr, addrlen);
 			}
 		}
-
-
-		/*read(newfd, &buffer, sizeof(buffer));
-
-		printf("TCP: %s\n", buffer);
-
-		write(newfd, msg, sizeof(msg));
-
-    	recvfrom(udpFd, buffer, sizeof(buffer), 0, (struct sockaddr*) &clientaddr, &addrlen);
-
-		printf("UDP: %s\n", buffer);
-
-		sendto(udpFd, msg, strlen(msg),0, (struct sockaddr*) &clientaddr, addrlen);
-
-		printf("loop hehe");*/
 
 	}
 

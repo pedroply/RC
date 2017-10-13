@@ -40,7 +40,6 @@ void termHandler(int sig)
 	printf("%s", unreg_msg);*/
 
 	sprintf(unregMsg, "UNR %s %d\n", inet_ntoa(*a), ws_port); //UNR IPWS portWS
-	printf("unregestering and terminating: %s\n", unregMsg);
 	if(sendto(fd_udp, unregMsg, strlen(unregMsg), 0, (struct sockaddr*) &serveraddr, addrlen) == -1){
 		perror("Error sending register message");
 		close(fd_udp);
@@ -51,9 +50,8 @@ void termHandler(int sig)
 
 	int recvBytes = recvfrom(fd_udp, unregMsg, sizeof(unregMsg), 0, (struct sockaddr*) &serveraddr, (socklen_t *)&addrlen);  //RAK OK/NOK
 	unregMsg[recvBytes] = '\0';
-	printf("%s\n", unregMsg);
 	if(recvBytes != 7){
-		printf("ERROR: unexpected cs msg\n");
+		perror("ERROR: unexpected cs msg\n");
 		close(fd_udp);
 		close(fd_tcp);
 		close(cs_tcp);
@@ -64,7 +62,7 @@ void termHandler(int sig)
 			break;
 	}
 	if(i != recvBytes){
-		printf("ERROR: unexpected cs msg\n");
+		perror("ERROR: unexpected cs msg\n");
 	}
 	close(fd_udp);
 	close(fd_tcp);
@@ -99,7 +97,6 @@ int doWordCount(char* data, int charsRead){
 	}
 	//nDigits = floor(log10(abs(count))) + 1;
 	sprintf(digit_WCT, "%d", nDigits);
-	printf("COUNT: %d, WORD: %s\n", count, digit_WCT);
 	return count;
 }
 
@@ -130,7 +127,6 @@ char* findLongestWord(char* data, int charsRead){
 
 	}
 	sprintf(size_string, "%d", size);
-	printf("SIZE: %s, WORD: %s\n", size_string, longestWord);
 	return longestWord;
 }
 
@@ -197,10 +193,10 @@ int main(int argc, char** argv){
 	sprintf(ws_port_string, "%d", ws_port);
 	strcat(reg_msg, ws_port_string);
 	strcat(reg_msg, "\n");
-	printf("%s", reg_msg);
+	//printf("%s", reg_msg);
 
 	if(gethostname(hostName, 128)==-1)
-		printf("erro: gethostname\n");
+		perror("erro: gethostname\n");
 
 	hostptr = gethostbyname(hostName);
 
@@ -221,9 +217,9 @@ int main(int argc, char** argv){
 	}
 
 	int recvBytes = recvfrom(fd_udp, reg_msg, sizeof(reg_msg), 0, (struct sockaddr*) &serveraddr, (socklen_t *)&addrlen);  //RAK OK/NOK
-	printf("%s\n", reg_msg);
+	//printf("%s\n", reg_msg);
 	if(recvBytes != 7){
-		printf("ERROR: unexpected cs msg\n");
+		perror("ERROR: unexpected cs msg\n");
 		close(fd_udp);
 		close(fd_tcp);
 		close(cs_tcp);
@@ -234,7 +230,7 @@ int main(int argc, char** argv){
 			break;
 	}
 	if(i != recvBytes){
-		printf("ERROR: unexpected cs msg\n");
+		perror("ERROR: unexpected cs msg\n");
 		close(fd_udp);
 		close(fd_tcp);
 		close(cs_tcp);
@@ -312,7 +308,7 @@ int main(int argc, char** argv){
 				req[3] = '\0';
 				fileName[12] = '\0';
 				char* rep_msg;
-				printf("REQ: %s | fileName: %s\n", req, fileName);
+				//printf("REQ: %s | fileName: %s\n", req, fileName);
 				if(!strcmp(req, "WCT")){
 					int wrd_count = 0;
 					rep_msg = malloc(sizeof(char*) * size_int + strlen(size) + 8);
@@ -323,7 +319,7 @@ int main(int argc, char** argv){
 					strcat(rep_msg, digit_WCT);
 					strcat(rep_msg, " ");
 					strcat(rep_msg, size_WCT);
-					printf("%s\n", rep_msg);
+					//printf("%s\n", rep_msg);
 				}
 				else if(!strcmp(req, "FLW")){
 					char* longest_word;
@@ -334,11 +330,10 @@ int main(int argc, char** argv){
 					strcat(rep_msg, size_string);
 					strcat(rep_msg, " ");
 					strcat(rep_msg, longest_word);
-					printf("hey :: %s\n size: %d\n", rep_msg, (int)strlen(rep_msg));
 					//process reply message with result
 				}
 				else if(!strcmp(req, "UPP")){
-					printf("In Convert Upper\n");
+					//printf("In Convert Upper\n");
 					rep_msg = malloc(sizeof(char) * (size_int + strlen(size) + 8));
 					rep_msg[0] = '\0';
 					char* data = convertUpper(fileInBuffer, charsRead);
@@ -346,10 +341,8 @@ int main(int argc, char** argv){
 					strcat(rep_msg, size);
 					strcat(rep_msg, " ");
 					strcat(rep_msg, data);
-					printf("hey :: %s\n size: %d\n data: %s\n", rep_msg, (int)strlen(rep_msg), data);
 				}
 				else if(!strcmp(req, "LOW")){
-					printf("In Convert Lower\n");
 					rep_msg = malloc(sizeof(char) * (size_int + strlen(size) + 8));
 					rep_msg[0] = '\0';
 					char* data = convertLower(fileInBuffer, charsRead);
@@ -357,13 +350,11 @@ int main(int argc, char** argv){
 					strcat(rep_msg, size);
 					strcat(rep_msg, " ");
 					strcat(rep_msg, data);
-					printf("%s\n", rep_msg);
 				}
 				else{
 					//write ("WRP EOF");
 				}
 				int t = write(newfd, rep_msg, strlen(rep_msg));
-				printf("wrote: %d\n", t);
 				if(t == -1)
 					perror("ERROR: write to working server");
 

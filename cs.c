@@ -137,6 +137,8 @@ int main(int argc, char** argv){
 					else if(strncmp(buffer, "REQ ", 4) == 0){ //REQ PTC size data
 						char task[4] = "";
 						char size[16] = "";
+						int total_size = 0;
+						char total_size_string[16];
 						char taskTemp[4];
 						char ipTemp[15];
 						char portTemp[6];
@@ -415,6 +417,8 @@ int main(int argc, char** argv){
 							fileInBuffer[0] = '\0';
 							char* processed_responses[serversSuported];
 							char size_WCT[16];
+							char digits_WCT[16];
+							int nDigits = 0, tempCount;
 							int l = 0, count = 0;
 							for (i = 0; i < serversSuported; i++){
 								processed_responses[i] = malloc(16);
@@ -443,11 +447,21 @@ int main(int argc, char** argv){
 							for (i = 0; i < l; i++){
 								count += atoi(processed_responses[i]);
 							}
+							tempCount = count;
+							while( count >= 1){
+								tempCount = tempCount / 10;
+								nDigits++;
+							}
 							sprintf(size_WCT, "%d", count);
-							char *response = malloc(sizeInt+16+4+2+2);
+							sprintf(digits_WCT, "%d", nDigits);
+							char *response = malloc(nDigits+16+4+2+2);
 							response[0] = '\0';
 							strcat(response, "REP R ");
+<<<<<<< HEAD
 							strcat(response, size);
+=======
+							strcat(response, digits_WCT);
+>>>>>>> 48226ff3751253e5ef7faad754880f5f40d7df69
 							strcat(response, " ");
 							strcat(response, size_WCT);
 							write(newfd, response, strlen(response));

@@ -150,32 +150,49 @@ int main(int argc, char** argv){
 			char size[16];
 			while((readBytes = read(fd, recvReq, reqSize)) == 0);
 			recvReq[readBytes] = '\0';
-			printf("%s\n", recvReq);
+			//printf("%s\n", recvReq);
 			char* data = malloc(sizeof(char*) * readBytes - 6);
 			data[0] = '\0';
 			for (i = 4; i < strlen(recvReq); i++){
 				if ( i == 4){
 					tag[0] = recvReq[i];
-					printf("%s\n", tag);
+					//printf("%s\n", tag);
 				}
 				else if (i >= 6){
 					if(recvReq[i] == ' ')
 						break;
-					size[i-6] = recvReq[i]; 
+					size[i-6] = recvReq[i];
 				}
 			}
 			i++;
+			size[i] = '\0';
 			for(j = 0; i < strlen(recvReq); i++){
 				data[j] = recvReq[i];
 				j++;
 			}
 			data[j] = '\0';
 			if (!strcmp(tag, "F")){
-				if (!(strcmp(req, "UPP") || (strcmp(req, "LOW")))){
-					printf("%s\n", data);
+				if ((!strcmp(req, "UPP") || (!strcmp(req, "LOW")))){
+					printf("ola %s\n", data);
+					FILE* fp;
+					char directory[80];
+					if(!(strcmp(req, "UPP"))){
+						sprintf(directory, "./upp_%s", fileName);
+						printf("\t Received file upp_%s with %s bytes\n", fileName, size);
+					}
+					else{
+						sprintf(directory, "./low_%s", fileName);
+						printf("\t Received file upp_%s with %s bytes\n", fileName, size);
+					}
+
+					fp = fopen(directory, "w+");
+					if(fp == NULL)
+						perror("ERROR: creating output file");
+					fputs(data, fp);
+					fclose(fp);
 				}
 			}
-			printf("%s %s\n", req, tag);
+			//printf("%s %s\n", req, tag);
 			if(!strcmp(tag, "R")){
 				if (!strcmp(req, "WCT")){
 					printf("Number of Words: %s\n", data);

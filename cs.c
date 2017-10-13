@@ -102,7 +102,38 @@ int main(int argc, char** argv){
 
 					//printf("%s, %d\n", buffer, (int)strlen(buffer));
 					if(strcmp(buffer, "LST\n") == 0){
-						write(newfd, "FPT 4 WCT FLW UPP LOW\n", sizeof("FPT 4 WCT FLW UPP LOW\n"));
+						char *supportedTasks[99], tempTask[4], tempIp[15], tempPort[7], sendLst[80] = "";
+						int supportedTasksCount = 0, i;
+						fileProcessingTasks = (FILE*)fopen("fileprocessingtasks.txt", "r");
+						for(i = 0; i<99; i++){
+							supportedTasks[i] = malloc(4);
+							supportedTasks[i][0] = '\0';
+						}
+						while(fscanf(fileProcessingTasks, "%s %s %s", tempTask, tempIp, tempPort) > 0){
+							int a;
+							int b = 0;
+							for(a = 0; a<supportedTasksCount; a++){
+								if(supportedTasks[a][0] != '\0' && !strcmp(supportedTasks[a], tempTask)){
+									b = 1;
+								}
+							}
+							for(a = 0; supportedTasks[a][0] != '\0'; a++);
+							if(!b){
+								strcpy(supportedTasks[a], tempTask);
+								supportedTasksCount++;
+								//printf("added: %s at: %d\n", tempTask, a);
+							}
+						}
+						fclose(fileProcessingTasks);
+
+						sprintf(sendLst, "FPT %d", supportedTasksCount);
+						for(i = 0; i<supportedTasksCount; i++){
+							strcat(sendLst, " ");
+							strcat(sendLst, supportedTasks[i]);
+						}
+						strcat(sendLst, "\n");
+
+						write(newfd, sendLst, strlen(sendLst));
 					}
 					else if(strncmp(buffer, "REQ ", 4) == 0){ //REQ PTC size data
 						char task[4] = "";
@@ -362,10 +393,10 @@ int main(int argc, char** argv){
 
 				int readBytes = recvfrom(udpFd, buffer, sizeof(buffer), 0, (struct sockaddr*) &clientaddr, &addrlen);  //REG WCT UPP 127.0.1.1 59000
 				buffer[readBytes] = '\0';
-				int i, j = -1, test;
+				int i, j = -1, test, charsInFile = 0;
 				char ip[15] = "", tempIp[15] = "";
 				char port[7] = "", tempPort[7] = "";
-				char tempTask[4] = "";
+				char tempTask[4] = "", nextChar, *newFileServer;
 
 				printf("%s\n", buffer);
 				if(!strncmp(buffer, "UNR ", 4)){ //unregister server
@@ -381,8 +412,8 @@ int main(int argc, char** argv){
 					//printf("caractere actual: %c size buffer: %d i: %d\n", buffer[i], strlen(buffer), i);
 					if(j == -1){
 						printf("mensagem do ws mal formulada\n");
-						if(sendto(udpFd, "RAK NOK\n", (int)strlen("RAK NOK\n"),0, (struct sockaddr*) &clientaddr, addrlen) == -1)
-							perror("Error sending register message");
+						if(sendto(udpFd, "UAK NOK\n", (int)strlen("UAK NOK\n"),0, (struct sockaddr*) &clientaddr, addrlen) == -1)
+							perror("Error sending unregister nok message");
 						break;
 					}
 					for(j = 0; i<strlen(buffer) && buffer[i] != ' '; i++){
@@ -400,21 +431,39 @@ int main(int argc, char** argv){
 					//check for repeated ip and port combo      FAZER UNREGISTER
 					fileProcessingTasks = (FILE*)fopen("fileprocessingtasks.txt", "r");
 					test = 0;
+					nextChar = getc(fileProcessingTasks);
+					while(nextChar != EOF){
+						charsInFile++;
+						nextChar = getc(fileProcessingTasks);
+					}
+					rewind(fileProcessingTasks);
+					newFileServer = malloc(charsInFile);
+					newFileServer[0] = '\0';
 					while(fscanf(fileProcessingTasks, "%s %s %s", tempTask, tempIp, tempPort) > 0){
 						//printf("%s == %s && %d == %d\n", ip, tempIp,  atoi(port), atoi(tempPort));
-						if(!strcmp(ip, tempIp) && atoi(port) == atoi(tempPort)){
-							test = 1;
-							break;
+						if(!(!strcmp(ip, tempIp) && atoi(port) == atoi(tempPort))){ //se n for do servidar a desregistar adicionar
+							strcat(newFileServer, tempTask);
+							strcat(newFileServer, " ");
+							strcat(newFileServer, tempIp);
+							strcat(newFileServer, " ");
+							strcat(newFileServer, tempPort);
+							strcat(newFileServer, "\n");
 						}
-					}
-					if(test){ //unregister server
-						printf("servidor ws ja registado\n");
-						if(sendto(udpFd, "RAK ERR\n", (int)strlen("RAK ERR\n"),0, (struct sockaddr*) &clientaddr, addrlen) == -1)
-							perror("Error sending register message");
-						break;
+						test = 1;
 					}
 					fclose(fileProcessingTasks);
+					fileProcessingTasks = (FILE*)fopen("fileprocessingtasks.txt", "w+");
+					fputs(newFileServer, fileProcessingTasks);
+					fclose(fileProcessingTasks);
 
+					if(!test){ //n estava registado
+						if(sendto(udpFd, "UAK NOK\n", (int)strlen("UAK NOK\n"),0, (struct sockaddr*) &clientaddr, addrlen) == -1)
+							perror("Error sending unregister nok message");
+						break;
+					}
+
+					if(sendto(udpFd, "UAK OK\n", (int)strlen("UAK OK\n"),0, (struct sockaddr*) &clientaddr, addrlen) == -1)
+						perror("Error sending unregister ok message");
 					break;
 				}
 
@@ -484,6 +533,18 @@ int main(int argc, char** argv){
 							task[i+3-j] = buffer[i];
 						}
 						task[3] = '\0';
+
+						/*int a;
+						int b = 0;
+						for(a = 0; a<99; a++){
+							if(supportedTasks[a] != NULL && !strcmp(supportedTasks[a], task)){
+								b = 1
+							}
+						}
+						for(a = 0; supportedTasks[a] != NULL; a++);
+						if(!b)
+							strcpy(supportedTasks[a], task);*/
+
 						//printf("%s %s %s\n", task, ip, port);
 						fprintf(fileProcessingTasks, "%s %s %s", task, ip, port);
 					}

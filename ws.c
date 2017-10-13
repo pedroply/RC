@@ -47,9 +47,8 @@ void termHandler(int sig)
 		exit(1);
 	}
 
-	unregMsg[0] = '\0';
-
 	int recvBytes = recvfrom(fd_udp, unregMsg, sizeof(unregMsg), 0, (struct sockaddr*) &serveraddr, &addrlen);  //RAK OK/NOK
+	unregMsg[recvBytes] = '\0';
 	printf("%s\n", unregMsg);
 	if(recvBytes != 7){
 		printf("ERROR: unexpected cs msg\n");

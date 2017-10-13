@@ -18,6 +18,10 @@ char req[4] = "";
 char fileName[40] = "";
 char data[40] =""; //PLACEHOLDER
 
+void termHandler(int sig)
+{
+  //send unreg msg to ws them return 0;
+}
 
 struct sockaddr_in serveraddr, serveraddr_tcp, clientaddr;
 struct in_addr *a;
@@ -106,6 +110,9 @@ int main(int argc, char** argv){
 		perror("Erro ao criar socket");
 	if(fd_tcp == -1)
 		perror("Erro ao criar socket TCP");
+
+	signal(SIGTERM, childHandler);
+
 	char msg[80] = "";
 	char hostName[128], name[128], ip_ws[20];
 	char ws_port_string[1];

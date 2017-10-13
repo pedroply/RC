@@ -21,12 +21,17 @@ struct sockaddr_in serveraddr, clientaddr, addr;
 char hostName[128];
 FILE *fileProcessingTasks;
 
-struct filePartitions{
-	int fileNumber;
-	int filePartitionsLeft;
-};
-
-struct filePartitions* fileParts[80] = {NULL};
+void childHandler(int sig)
+{
+  pid_t pid;
+	int status;
+  //pid = wait(&status);
+  pid =  waitpid(-1, &status, WUNTRACED);
+	WEXITSTATUS(status);
+	printf("-----status child: %d\n", status);
+	if(status == 512)
+		fileCount++;
+}
 
 int main(int argc, char** argv){
 	tcpFd = socket(AF_INET, SOCK_STREAM, 0);
@@ -37,6 +42,8 @@ int main(int argc, char** argv){
 		perror("Erro ao criar socket Udp");
 	if(wFd == -1)
 		perror("Erro ao criar socket Tcp Working Servers");
+
+	signal(SIGCHLD, childHandler);
 
 	for (maxfd = 1; maxfd < argc ; maxfd++){
 		if (!strcmp(argv[maxfd], "-p")){
@@ -335,7 +342,8 @@ int main(int argc, char** argv){
 						strcat(response, " ");
 						strcat(response, fileInBuffer);
 						write(newfd, response, strlen(response));
-
+						close(newfd);
+						return 2;
 					}
 					else
 						write(newfd, "REQ ERR\n", sizeof("REQ ERR\n"));
@@ -446,7 +454,7 @@ int main(int argc, char** argv){
 
 				//check for repeated ip and port combo
 				fileProcessingTasks = (FILE*)fopen("fileprocessingtasks.txt", "r");
-				int test = 0;
+				test = 0;
 				while(fscanf(fileProcessingTasks, "%s %s %s", tempTask, tempIp, tempPort) > 0){
 					//printf("%s == %s && %d == %d\n", ip, tempIp,  atoi(port), atoi(tempPort));
 					if(!strcmp(ip, tempIp) && atoi(port) == atoi(tempPort)){

@@ -144,11 +144,48 @@ int main(int argc, char** argv){
 	    if(write(fd, sendReq, reqSize) == -1)
 				perror("Error: write to socket\n");
 
-			int readBytes = 0;
+			int readBytes = 0, j;
+			char tag[2];
+			tag[1] = '\0';
+			char size[16];
 			while((readBytes = read(fd, recvReq, reqSize)) == 0);
 			recvReq[readBytes] = '\0';
-				//printf("Error: read from socket\n");
-			printf("got: %s\nend\n", recvReq);
+			printf("%s\n", recvReq);
+			char* data = malloc(sizeof(char*) * readBytes - 6);
+			data[0] = '\0';
+			for (i = 4; i < strlen(recvReq); i++){
+				if ( i == 4){
+					tag[0] = recvReq[i];
+					printf("%s\n", tag);
+				}
+				else if (i >= 6){
+					if(recvReq[i] == ' ')
+						break;
+					size[i-6] = recvReq[i]; 
+				}
+			}
+			i++;
+			for(j = 0; i < strlen(recvReq); i++){
+				data[j] = recvReq[i];
+				j++;
+			}
+			data[j] = '\0';
+			if (!strcmp(tag, "F")){
+				if (!(strcmp(req, "UPP") || (strcmp(req, "LOW")))){
+					printf("%s\n", data);
+				}
+			}
+			printf("%s %s\n", req, tag);
+			if(!strcmp(tag, "R")){
+				if (!strcmp(req, "WCT")){
+					printf("Number of Words: %s\n", data);
+				}
+				else if(!strcmp(req, "FLW")){
+					printf("Longest Word: %s\n", data);
+				}
+			}
+
+			//printf("got: %s\nend\n", recvReq);
 
 		}
 		else{
